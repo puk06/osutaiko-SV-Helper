@@ -407,7 +407,6 @@ namespace osu_taiko_SV_Helper
             catch (Exception error)
             {
                 ErrorLogger(error);
-                Console.WriteLine(error);
                 WORK_STATUS_TEXT.Text = "Error Occurred";
                 WORK_STATUS_TEXT.ForeColor = Color.Red;
                 System.Media.SystemSounds.Hand.Play();
