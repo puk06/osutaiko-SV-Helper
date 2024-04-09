@@ -425,9 +425,9 @@ namespace osu_taiko_SV_Helper
                 StreamReader currentVersion = new StreamReader("./src/version");
                 string currentVersionString = await currentVersion.ReadToEndAsync();
                 currentVersion.Close();
-                if (currentVersionString.Contains("Beta"))
+                if (currentVersionString.Contains("beta"))
                 {
-                    MessageBox.Show("Betaバージョンをお使いのようです！もしバグや変な挙動を見つけたら報告お願いします！\n(定期的に更新されるので、Twitter(@Hoshino1_)を定期的に確認してください！！)", "Betaバージョン", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("betaバージョンをお使いのようです！もしバグや変な挙動を見つけたら報告お願いします！\n(定期的に更新されるので、Twitter(@Hoshino1_)を定期的に確認してください！！)", "Betaバージョン", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
                 var githubClient = new GitHubClient(new Octokit.ProductHeaderValue("osutaiko-SV-Helper"));
