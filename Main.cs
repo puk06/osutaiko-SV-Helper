@@ -407,7 +407,7 @@ namespace osu_taiko_SV_Helper
         private static void ErrorLogger(Exception error)
         {
             string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-            File.WriteAllText("error.log", $"[{currentTime}] " + error.Message + "\n" + error.StackTrace);
+            File.WriteAllText("Error.log", $"[{currentTime}] " + error.Message + "\n" + error.StackTrace);
         }
 
         private bool ValueChecker()
