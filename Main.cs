@@ -297,7 +297,11 @@ namespace osu_taiko_SV_Helper
                     _readBeatmapError = false;
 
                     _currentBeatmapPath = osuBeatmapPath;
-                    if (_memoryData.BeatmapStr == _baseAddresses.Beatmap.MapString) continue;
+                    if (_memoryData.BeatmapStr == _baseAddresses.Beatmap.MapString)
+                    {
+                        _memoryError = false;
+                        continue;
+                    }
                     OsuParsers.Beatmaps.Beatmap beatmapData = BeatmapDecoder.Decode(osuBeatmapPath);
                     _memoryData.Title = beatmapData.MetadataSection.Title;
                     _memoryData.Artist = beatmapData.MetadataSection.Artist;
@@ -337,32 +341,6 @@ namespace osu_taiko_SV_Helper
         {
             MAKE_BUTTON.Enabled = false;
             UNDO_BUTTON.Enabled = false;
-
-            if (Regex.IsMatch(SV_STARTTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
-            {
-                string[] time = SV_STARTTIME_TEXTBOX.Text
-                    .Replace(" ", "")
-                    .Replace("-", "")
-                    .Split(':');
-                int minute = int.Parse(time[0]);
-                int second = int.Parse(time[1]);
-                int millisecond = int.Parse(time[2]);
-                int totalMillisecond = minute * 60000 + second * 1000 + millisecond;
-                SV_STARTTIME_TEXTBOX.Text = totalMillisecond.ToString();
-            }
-
-            if (Regex.IsMatch(SV_ENDTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
-            {
-                string[] time = SV_ENDTIME_TEXTBOX.Text
-                    .Replace(" ", "")
-                    .Replace("-", "")
-                    .Split(':');
-                int minute = int.Parse(time[0]);
-                int second = int.Parse(time[1]);
-                int millisecond = int.Parse(time[2]);
-                int totalMillisecond = minute * 60000 + second * 1000 + millisecond;
-                SV_ENDTIME_TEXTBOX.Text = totalMillisecond.ToString();
-            }
 
             bool result = ValueChecker();
             if (!result)
@@ -434,6 +412,39 @@ namespace osu_taiko_SV_Helper
 
         private bool ValueChecker()
         {
+
+            if (Regex.IsMatch(SV_STARTTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
+            {
+                string[] time = Regex.Replace(SV_STARTTIME_TEXTBOX.Text, "[^0-9:]", "").Split(':');
+                if (!int.TryParse(time[0], out _) || !int.TryParse(time[1], out _) || !int.TryParse(time[2], out _))
+                {
+                    MessageBox.Show("開始時間の入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
+                int minute = int.Parse(time[0]);
+                int second = int.Parse(time[1]);
+                int millisecond = int.Parse(time[2]);
+                int totalMillisecond = minute * 60000 + second * 1000 + millisecond;
+                SV_STARTTIME_TEXTBOX.Text = totalMillisecond.ToString();
+            }
+
+            if (Regex.IsMatch(SV_ENDTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
+            {
+                string[] time = Regex.Replace(SV_ENDTIME_TEXTBOX.Text, "[^0-9:]", "").Split(':');
+                if (!int.TryParse(time[0], out _) || !int.TryParse(time[1], out _) || !int.TryParse(time[2], out _))
+                {
+                    MessageBox.Show("終了時間の入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+
+                int minute = int.Parse(time[0]);
+                int second = int.Parse(time[1]);
+                int millisecond = int.Parse(time[2]);
+                int totalMillisecond = minute * 60000 + second * 1000 + millisecond;
+                SV_ENDTIME_TEXTBOX.Text = totalMillisecond.ToString();
+            }
+
             if (string.IsNullOrEmpty(SV_STARTTIME_TEXTBOX.Text) || string.IsNullOrEmpty(SV_ENDTIME_TEXTBOX.Text))
             {
                 MessageBox.Show("開始時間と終了時間を入力してください。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
