@@ -125,19 +125,21 @@ namespace osu_taiko_SV_Helper
                 }
 
                 if (_firstLoad) return Task.CompletedTask;
-                foreach (Control control in Controls) control.Enabled = true;
+                foreach (Control control in Controls)
+                {
+                    if ((OFFSET_CHECKBOX16.Checked || OFFSET_CHECKBOX12.Checked) && control == OFFSET_TEXTBOX)
+                    {
+                        OFFSET_TEXTBOX.Enabled = false;
+                        continue;
+                    }
+                    control.Enabled = true;
+                }
 
                 if (!_working)
                 {
                     WORK_STATUS_TEXT.Text = "Ready! Waiting for your operation...";
                     WORK_STATUS_TEXT.ForeColor = Color.LimeGreen;
                 }
-
-                ARTIST_LABEL.Text = _memoryData.Artist;
-                VERSION_LABEL.Text = _memoryData.Version;
-
-                int versionWidth = VERSION_LABEL.Width;
-                VERSION_LABEL.Location = new Point(390 - versionWidth, 2);
 
                 string title = _memoryData.Title;
                 const int maxLabelWidth = 380;
@@ -152,6 +154,31 @@ namespace osu_taiko_SV_Helper
                     title += "...";
                 }
                 TITLE_LABEL.Text = title;
+
+                string artist = _memoryData.Artist;
+                if (TextRenderer.MeasureText(artist, ARTIST_LABEL.Font).Width > maxLabelWidth)
+                {
+                    while (TextRenderer.MeasureText(artist + "...", ARTIST_LABEL.Font).Width > maxLabelWidth)
+                    {
+                        artist = artist.Substring(0, artist.Length - 1);
+                    }
+
+                    artist += "...";
+                }
+                ARTIST_LABEL.Text = artist;
+
+                string version = _memoryData.Version;
+                if (TextRenderer.MeasureText(version, VERSION_LABEL.Font).Width > maxLabelWidth)
+                {
+                    while (TextRenderer.MeasureText(version + "...", VERSION_LABEL.Font).Width > maxLabelWidth)
+                    {
+                        version = version.Substring(0, version.Length - 1);
+                    }
+
+                    version += "...";
+                }
+                VERSION_LABEL.Text = version;
+                VERSION_LABEL.Location = new Point(390 - VERSION_LABEL.Width, 2);
 
                 if (_preData.BeatmapStr == _memoryData.BeatmapStr) return Task.CompletedTask;
                 Background_Picture_Box.Image = GetBackgroundImage(_memoryData.BackgroundPath);
@@ -191,7 +218,7 @@ namespace osu_taiko_SV_Helper
                 graphics.DrawImage(bmp, 0, -((resizeHeight - 102) / 2), resizeWidth, resizeHeight);
                 graphics.Dispose();
 
-                const double darknessFactor = 0.7;
+                const double darknessFactor = 0.5;
                 for (int y = 0; y < resizeHeight; y++)
                 {
                     for (int x = 0; x < resizeWidth; x++)
