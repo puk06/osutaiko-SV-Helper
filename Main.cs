@@ -12,7 +12,6 @@ using OsuMemoryDataProvider.OsuMemoryModels;
 using OsuParsers.Decoders;
 using Microsoft.Win32;
 using Octokit;
-using ProductHeaderValue = System.Net.Http.Headers.ProductHeaderValue;
 
 namespace osu_taiko_SV_Helper
 {
@@ -37,7 +36,10 @@ namespace osu_taiko_SV_Helper
         {
             InitializeComponent();
             CheckConfig();
-            Thread getMemoryDataThread = new Thread(UpdateMemoryData) { IsBackground = true };
+            Thread getMemoryDataThread = new Thread(UpdateMemoryData)
+            {
+                IsBackground = true
+            };
             getMemoryDataThread.Start();
             UpdateLoop();
         }

@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace osu_taiko_SV_Helper
 {
@@ -139,7 +137,7 @@ namespace osu_taiko_SV_Helper
                             }
                         }
 
-                        TimingPoint _timingPoint = new TimingPoint
+                        TimingPoint currentTimingPoint = new TimingPoint
                         {
                             Time = element.Time - _args.Offset,
                             BeatLength = -100 / (_args.Sv[0] + commonSvRatio * (element.Time - hitObjectsTime[0])),
@@ -153,9 +151,9 @@ namespace osu_taiko_SV_Helper
 
                         if (_args.BpmCompatibility && (int)Math.Round(startBpm) != (int)Math.Round(currentBpm))
                         {
-                            _timingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
+                            currentTimingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
                         }
-                        _timingPoints.Add(_timingPoint);
+                        _timingPoints.Add(currentTimingPoint);
                     }
 
                     break;
@@ -192,7 +190,7 @@ namespace osu_taiko_SV_Helper
                             }
                         }
 
-                        TimingPoint _timingPoint = new TimingPoint
+                        TimingPoint currentTimingPoint = new TimingPoint
                         {
                             Time = element.Time - _args.Offset,
                             BeatLength = -100 / (100 / ((100 / _args.Sv[1] - 100 / _args.Sv[0]) / (hitObjectsTime[1] - hitObjectsTime[0]) * (element.Time - hitObjectsTime[0]) + 100 / _args.Sv[0])),
@@ -206,9 +204,9 @@ namespace osu_taiko_SV_Helper
 
                         if (_args.BpmCompatibility && (int)Math.Round(startBpm) != (int)Math.Round(currentBpm))
                         {
-                            _timingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
+                            currentTimingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
                         }
-                        _timingPoints.Add(_timingPoint);
+                        _timingPoints.Add(currentTimingPoint);
                     }
 
                     break;
@@ -247,7 +245,7 @@ namespace osu_taiko_SV_Helper
                             }
                         }
 
-                        TimingPoint _timingPoint = new TimingPoint
+                        TimingPoint currentTimingPoint = new TimingPoint
                         {
                             Time = (int)Math.Round(i - _args.Offset),
                             BeatLength = -100 / (_args.Sv[0] + commonSvRatio * (i - _args.Point[0])),
@@ -261,10 +259,10 @@ namespace osu_taiko_SV_Helper
 
                         if (_args.BpmCompatibility && (int)Math.Round(startBpm) != (int)Math.Round(currentBpm))
                         {
-                            _timingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
+                            currentTimingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
                         }
 
-                        _timingPoints.Add(_timingPoint);
+                        _timingPoints.Add(currentTimingPoint);
                     }
 
                     break;
