@@ -39,6 +39,9 @@
     <Reference Include="Coosu.Database, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\Coosu.Database.2.3.40\lib\netstandard2.0\Coosu.Database.dll</HintPath>
     </Reference>
+    <Reference Include="Octokit, Version=10.0.0.0, Culture=neutral, PublicKeyToken=0be8860aee462442, processorArchitecture=MSIL">
+      <HintPath>packages\Octokit.10.0.0\lib\netstandard2.0\Octokit.dll</HintPath>
+    </Reference>
     <Reference Include="OsuMemoryDataProvider, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\OsuMemoryDataProvider.0.10.3\lib\net472\OsuMemoryDataProvider.dll</HintPath>
     </Reference>

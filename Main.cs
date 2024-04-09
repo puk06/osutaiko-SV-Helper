@@ -11,6 +11,8 @@ using OsuMemoryDataProvider;
 using OsuMemoryDataProvider.OsuMemoryModels;
 using OsuParsers.Decoders;
 using Microsoft.Win32;
+using Octokit;
+using ProductHeaderValue = System.Net.Http.Headers.ProductHeaderValue;
 
 namespace osu_taiko_SV_Helper
 {
@@ -46,6 +48,7 @@ namespace osu_taiko_SV_Helper
             {
                 SV_MODE_COMBOBOX.SelectedIndex = 0;
                 MODE_COMBOBOX.SelectedIndex = 0;
+                GithubUpdateChecker();
                 return;
             }
 
@@ -92,6 +95,11 @@ namespace osu_taiko_SV_Helper
             OFFSET_CHECKBOX12.Checked = _configDictionary.TryGetValue("OFFSET_12", out string test2) && test2 == "true";
             OFFSET_CHECKBOX16.Checked = _configDictionary.TryGetValue("OFFSET_16", out string test3) && test3 == "true";
             BPM_COMP_CHECKBOX.Checked = _configDictionary.TryGetValue("BPM_COMPATIBILITY", out string test4) && test4 == "true";
+            if (_configDictionary.TryGetValue("UPDATE_CHECK", out string test5) && test5 == "true")
+            {
+                GithubUpdateChecker();
+            }
+            
         }
 
         private async void UpdateLoop()
@@ -403,6 +411,37 @@ namespace osu_taiko_SV_Helper
                 UNDO_BUTTON.Enabled = true;
             }
         }
+
+        private static async void GithubUpdateChecker()
+        {
+            try
+            {
+                const string softwareReleasesLatest = "https://github.com/puk06/osutaiko-SV-Helper/releases/latest";
+                if (!File.Exists("./src/version"))
+                {
+                    MessageBox.Show("versionファイルが存在しないのでアップデートチェックは無視されます。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                StreamReader currentVersion = new StreamReader("./src/version");
+                string currentVersionString = await currentVersion.ReadToEndAsync();
+                currentVersion.Close();
+                if (currentVersionString.Contains("Test"))
+                {
+                    MessageBox.Show("テストバージョンをお使いのようです！もしバグや変な挙動を見つけたら報告お願いします！\n(定期的に更新されるので、Twitter(@Hoshino1_)を定期的に確認してください！！)", "テストバージョン", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+                var githubClient = new GitHubClient(new Octokit.ProductHeaderValue("osutaiko-SV-Helper"));
+                var latestRelease = await githubClient.Repository.Release.GetLatest("puk06", "osutaiko-SV-Helper");
+                if (latestRelease.Name == currentVersionString) return;
+                DialogResult result = MessageBox.Show($"最新バージョンがあります！\n\n現在: {currentVersionString} \n更新後: {latestRelease.Name}\n\nダウンロードページを開きますか？", "アップデートのお知らせ", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                if (result == DialogResult.Yes) Process.Start(softwareReleasesLatest);
+            }
+            catch
+            {
+                MessageBox.Show("アップデートチェック中にエラーが発生しました", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
 
         private static void ErrorLogger(Exception error)
         {
