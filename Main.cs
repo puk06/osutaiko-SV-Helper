@@ -11,7 +11,6 @@ using OsuMemoryDataProvider;
 using OsuMemoryDataProvider.OsuMemoryModels;
 using OsuParsers.Decoders;
 using Microsoft.Win32;
-using System.Security.Cryptography;
 
 namespace osu_taiko_SV_Helper
 {
@@ -29,7 +28,7 @@ namespace osu_taiko_SV_Helper
         private string _currentBeatmapPath;
         private bool _memoryError;
         private bool _firstLoad = true;
-        private bool readBeatmapError;
+        private bool _readBeatmapError;
         private readonly Dictionary<string, string> _configDictionary = new Dictionary<string, string>();
 
         public SvHelper()
@@ -108,7 +107,7 @@ namespace osu_taiko_SV_Helper
         {
             try
             {
-                if (_memoryError || readBeatmapError)
+                if (_memoryError)
                 {
                     foreach (Control control in Controls)
                     {
@@ -119,7 +118,7 @@ namespace osu_taiko_SV_Helper
                             control == ARTIST_LABEL ||
                             control == VERSION_LABEL) continue;
                         control.Enabled = false;
-                        WORK_STATUS_TEXT.Text = _memoryError ? "Memory Error Occurred" : "Beatmap Error Occurred";
+                        WORK_STATUS_TEXT.Text = _readBeatmapError ? "Beatmap Error Occurred" : "Memory Error Occurred";
                         WORK_STATUS_TEXT.ForeColor = Color.Red;
                     }
                     return Task.CompletedTask;
@@ -140,9 +139,7 @@ namespace osu_taiko_SV_Helper
                 int versionWidth = VERSION_LABEL.Width;
                 VERSION_LABEL.Location = new Point(390 - versionWidth, 2);
 
-
                 string title = _memoryData.Title;
-
                 const int maxLabelWidth = 380;
                 TITLE_LABEL.MaximumSize = new Size(maxLabelWidth, int.MaxValue);
                 if (TextRenderer.MeasureText(title, TITLE_LABEL.Font).Width > maxLabelWidth)
@@ -154,15 +151,11 @@ namespace osu_taiko_SV_Helper
 
                     title += "...";
                 }
-
                 TITLE_LABEL.Text = title;
 
-                if (_preData.Title == _memoryData.Title && _preData.Artist == _memoryData.Artist && _preData.Version == _memoryData.Version) return Task.CompletedTask;
-
+                if (_preData.BeatmapStr == _memoryData.BeatmapStr) return Task.CompletedTask;
                 Background_Picture_Box.Image = GetBackgroundImage(_memoryData.BackgroundPath);
-                _preData.Title = _memoryData.Title;
-                _preData.Artist = _memoryData.Artist;
-                _preData.Version = _memoryData.Version;
+                _preData.BeatmapStr = _memoryData.BeatmapStr;
 
                 return Task.CompletedTask;
             }
@@ -226,7 +219,6 @@ namespace osu_taiko_SV_Helper
             {
                 try
                 {
-                    if (_working) continue;
                     if (!_isDbLoaded)
                     {
                         if (Process.GetProcessesByName("osu!").Length > 0)
@@ -271,19 +263,19 @@ namespace osu_taiko_SV_Helper
                         _baseAddresses.Beatmap.OsuFileName ?? "");
                     if (!File.Exists(osuBeatmapPath))
                     {
-                        readBeatmapError = true;
+                        _memoryError = true;
+                        _readBeatmapError = true;
                         continue;
                     }
-                    readBeatmapError = false;
+                    _readBeatmapError = false;
 
                     _currentBeatmapPath = osuBeatmapPath;
-                    string beatmapHash = CalculateSha256(osuBeatmapPath);
-                    if (_memoryData.BeatmapHash == beatmapHash) continue;
+                    if (_memoryData.BeatmapStr == _baseAddresses.Beatmap.MapString) continue;
                     OsuParsers.Beatmaps.Beatmap beatmapData = BeatmapDecoder.Decode(osuBeatmapPath);
                     _memoryData.Title = beatmapData.MetadataSection.Title;
                     _memoryData.Artist = beatmapData.MetadataSection.Artist;
                     _memoryData.Version = beatmapData.MetadataSection.Version;
-                    _memoryData.BeatmapHash = beatmapHash;
+                    _memoryData.BeatmapStr = _baseAddresses.Beatmap.MapString;
 
                     string backgroundPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName ?? "",
                         beatmapData.EventsSection.BackgroundImage ?? "");
@@ -296,19 +288,6 @@ namespace osu_taiko_SV_Helper
                 {
                     ErrorLogger(error);
                     _memoryError = true;
-                }
-                
-            }
-        }
-
-        private string CalculateSha256(string filePath)
-        {
-            using (FileStream stream = File.OpenRead(filePath))
-            {
-                using (SHA256 sha256 = SHA256.Create())
-                {
-                    byte[] hashBytes = sha256.ComputeHash(stream);
-                    return BitConverter.ToString(hashBytes).Replace("-", "").ToLower();
                 }
             }
         }
@@ -399,7 +378,7 @@ namespace osu_taiko_SV_Helper
                 await beatmap.Make();
                 await beatmap.Output();
                 sw.Stop();
-                WORK_STATUS_TEXT.Text = "SV Applied!" + " (" + sw.ElapsedMilliseconds + "ms)";
+                WORK_STATUS_TEXT.Text = $"SV Applied! ({sw.ElapsedMilliseconds}ms)";
                 System.Media.SystemSounds.Asterisk.Play();
                 await Task.Delay(3000);
                 _working = false;
@@ -499,8 +478,8 @@ namespace osu_taiko_SV_Helper
 
             if (int.Parse(VOLUME_START_TEXTBOX.Text) > 100) VOLUME_START_TEXTBOX.Text = "100";
             if (int.Parse(VOLUME_END_TEXTBOX.Text) > 100) VOLUME_END_TEXTBOX.Text = "100";
-            if (int.Parse(VOLUME_START_TEXTBOX.Text) < 0) VOLUME_START_TEXTBOX.Text = "0";
-            if (int.Parse(VOLUME_END_TEXTBOX.Text) < 0) VOLUME_END_TEXTBOX.Text = "0";
+            if (int.Parse(VOLUME_START_TEXTBOX.Text) < 0) VOLUME_START_TEXTBOX.Text = "1";
+            if (int.Parse(VOLUME_END_TEXTBOX.Text) < 0) VOLUME_END_TEXTBOX.Text = "1";
             
             if (int.TryParse(OFFSET_TEXTBOX.Text, out int offset))
             {
@@ -512,17 +491,15 @@ namespace osu_taiko_SV_Helper
                 return false;
             }
 
-            if (USE_CUSTOM_BPM_CHECKBOX.Checked)
+            if (!USE_CUSTOM_BPM_CHECKBOX.Checked) return true;
+            if (!double.TryParse(BASE_BPM_TEXTBOX.Text, out _))
             {
-                if (!double.TryParse(BASE_BPM_TEXTBOX.Text, out _))
-                {
-                    BASE_BPM_TEXTBOX.Text = "";
-                }
-                else if (double.Parse(BASE_BPM_TEXTBOX.Text) <= 0)
-                {
-                    MessageBox.Show("ベースBPMに0以下の値を入力することはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
-                }
+                BASE_BPM_TEXTBOX.Text = "";
+            }
+            else if (double.Parse(BASE_BPM_TEXTBOX.Text) <= 0)
+            {
+                MessageBox.Show("ベースBPMに0以下の値を入力することはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
             }
 
             return true;
@@ -556,12 +533,15 @@ namespace osu_taiko_SV_Helper
                 try
                 {
                     _working = true;
+                    Stopwatch sw = new Stopwatch();
+                    sw.Start();
                     WORK_STATUS_TEXT.Text = "Restoring...";
                     string[] files = Directory.GetFiles(backupPath);
                     string latestBackup = FindLatestFile(files);
                     if (string.IsNullOrEmpty(latestBackup))
                     {
-                        WORK_STATUS_TEXT.Text = "Backup not found!";
+                        sw.Stop();
+                        WORK_STATUS_TEXT.Text = $"Backup not found! ({sw.ElapsedMilliseconds}ms)";
                         WORK_STATUS_TEXT.ForeColor = Color.Red;
                         System.Media.SystemSounds.Hand.Play();
                     }
@@ -570,7 +550,8 @@ namespace osu_taiko_SV_Helper
                         File.Copy(latestBackup, _currentBeatmapPath, true);
                         File.Delete(latestBackup);
                         if (Directory.GetFiles(backupPath).Length == 0) Directory.Delete(backupPath);
-                        WORK_STATUS_TEXT.Text = "Restored!";
+                        sw.Stop();
+                        WORK_STATUS_TEXT.Text = $"Restored! ({sw.ElapsedMilliseconds}ms)";
                         System.Media.SystemSounds.Asterisk.Play();
                     }
                     await Task.Delay(3000);
@@ -648,9 +629,7 @@ namespace osu_taiko_SV_Helper
 
     public class BeatmapData
     {
-        public string Title { get; set; }
-        public string Artist { get; set; }
-        public string Version { get; set; }
+        public string BeatmapStr { get; set; }
     }
 
     public class MemoryData
@@ -659,6 +638,6 @@ namespace osu_taiko_SV_Helper
         public string Artist { get; set; }
         public string Version { get; set; }
         public string BackgroundPath { get; set;}
-        public string BeatmapHash { get; set; }
+        public string BeatmapStr { get; set; }
     }
 }
