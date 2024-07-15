@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Diagnostics;
@@ -101,7 +101,6 @@ namespace osu_taiko_SV_Helper
             {
                 GithubUpdateChecker();
             }
-            
         }
 
         private async void UpdateLoop()
@@ -453,7 +452,6 @@ namespace osu_taiko_SV_Helper
 
         private bool ValueChecker()
         {
-
             if (Regex.IsMatch(SV_STARTTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
             {
                 string[] time = Regex.Replace(SV_STARTTIME_TEXTBOX.Text, "[^0-9:]", "").Split(':');
@@ -466,7 +464,7 @@ namespace osu_taiko_SV_Helper
                 int minute = int.Parse(time[0]);
                 int second = int.Parse(time[1]);
                 int millisecond = int.Parse(time[2]);
-                int totalMillisecond = minute * 60000 + second * 1000 + millisecond;
+                int totalMillisecond = (minute * 60000) + (second * 1000) + millisecond;
                 SV_STARTTIME_TEXTBOX.Text = totalMillisecond.ToString();
             }
 
@@ -482,7 +480,7 @@ namespace osu_taiko_SV_Helper
                 int minute = int.Parse(time[0]);
                 int second = int.Parse(time[1]);
                 int millisecond = int.Parse(time[2]);
-                int totalMillisecond = minute * 60000 + second * 1000 + millisecond;
+                int totalMillisecond = (minute * 60000) + (second * 1000) + millisecond;
                 SV_ENDTIME_TEXTBOX.Text = totalMillisecond.ToString();
             }
 

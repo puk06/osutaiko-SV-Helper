@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Globalization;
 using System.Windows.Forms;
 
@@ -9,7 +9,6 @@ namespace osu_taiko_SV_Helper
         /// <summary>
         /// アプリケーションのメイン エントリ ポイントです。
         /// </summary>
-        
         [STAThread]
         private static void Main()
         {
