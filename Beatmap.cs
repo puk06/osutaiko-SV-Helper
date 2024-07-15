@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -140,11 +140,11 @@ namespace osu_taiko_SV_Helper
                         TimingPoint currentTimingPoint = new TimingPoint
                         {
                             Time = element.Time - _args.Offset,
-                            BeatLength = -100 / (_args.Sv[0] + commonSvRatio * (element.Time - hitObjectsTime[0])),
+                            BeatLength = -100 / (_args.Sv[0] + (commonSvRatio * (element.Time - hitObjectsTime[0]))),
                             Meter = 4,
                             SampleSet = 1,
                             SampleIndex = 0,
-                            Volume = (int)Math.Round(_args.Volume[0] + commonVolumeRatio * (element.Time - hitObjectsTime[0])),
+                            Volume = (int)Math.Round(_args.Volume[0] + (commonVolumeRatio * (element.Time - hitObjectsTime[0]))),
                             Uninherited = 0,
                             Effects = _args.IsKiaiMode ? 1 : 0
                         };
@@ -185,7 +185,7 @@ namespace osu_taiko_SV_Helper
                                     continue;
                                 case 3:
                                     var prevTimingPoint = _timingPoints.Find(timingPoint => timingPoint.Time == element.Time - _args.Offset && timingPoint.Uninherited == 0);
-                                    prevTimingPoint.BeatLength /= 100 / (((100 / _args.Sv[1]) - (100 / _args.Sv[0])) / (hitObjectsTime[1] - hitObjectsTime[0]) * (element.Time - hitObjectsTime[0]) + (100 / _args.Sv[0]));
+                                    prevTimingPoint.BeatLength /= 100 / ((((100 / _args.Sv[1]) - (100 / _args.Sv[0])) / (hitObjectsTime[1] - hitObjectsTime[0]) * (element.Time - hitObjectsTime[0])) + (100 / _args.Sv[0]));
                                     continue;
                             }
                         }
@@ -193,11 +193,11 @@ namespace osu_taiko_SV_Helper
                         TimingPoint currentTimingPoint = new TimingPoint
                         {
                             Time = element.Time - _args.Offset,
-                            BeatLength = -100 / (100 / ((100 / _args.Sv[1] - 100 / _args.Sv[0]) / (hitObjectsTime[1] - hitObjectsTime[0]) * (element.Time - hitObjectsTime[0]) + 100 / _args.Sv[0])),
+                            BeatLength = -100 / (100 / ((((100 / _args.Sv[1]) - (100 / _args.Sv[0])) / (hitObjectsTime[1] - hitObjectsTime[0]) * (element.Time - hitObjectsTime[0])) + (100 / _args.Sv[0]))),
                             Meter = 4,
                             SampleSet = 1,
                             SampleIndex = 0,
-                            Volume = (int)Math.Round(_args.Volume[0] + commonVolumeRatio * (element.Time - hitObjectsTime[0])),
+                            Volume = (int)Math.Round(_args.Volume[0] + (commonVolumeRatio * (element.Time - hitObjectsTime[0]))),
                             Uninherited = 0,
                             Effects = _args.IsKiaiMode ? 1 : 0
                         };
@@ -248,11 +248,11 @@ namespace osu_taiko_SV_Helper
                         TimingPoint currentTimingPoint = new TimingPoint
                         {
                             Time = (int)Math.Round(i - _args.Offset),
-                            BeatLength = -100 / (_args.Sv[0] + commonSvRatio * (i - _args.Point[0])),
+                            BeatLength = -100 / (_args.Sv[0] + (commonSvRatio * (i - _args.Point[0]))),
                             Meter = 4,
                             SampleSet = 1,
                             SampleIndex = 0,
-                            Volume = (int)Math.Round(_args.Volume[0] + commonVolumeRatio * (i - _args.Point[0])),
+                            Volume = (int)Math.Round(_args.Volume[0] + (commonVolumeRatio * (i - _args.Point[0]))),
                             Uninherited = 0,
                             Effects = _args.IsKiaiMode ? 1 : 0
                         };
