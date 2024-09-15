@@ -4,25 +4,28 @@ using System.Windows.Forms;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using OsuMemoryDataProvider;
 using OsuMemoryDataProvider.OsuMemoryModels;
 using OsuParsers.Decoders;
-using Microsoft.Win32;
-using Octokit;
+using osu_taiko_SV_Helper.Classes;
+using static osu_taiko_SV_Helper.Classes.Helper;
+using System.Runtime.InteropServices;
 
 namespace osu_taiko_SV_Helper
 {
     public partial class SvHelper : Form
     {
+        private const string CurrentVersion = "v1.0.0-Release";
         private readonly BeatmapData _preData = new BeatmapData();
         private readonly StructuredOsuMemoryReader _sreader = new StructuredOsuMemoryReader();
         private readonly OsuBaseAddresses _baseAddresses = new OsuBaseAddresses();
         private readonly MemoryData _memoryData = new MemoryData();
         private bool _working;
-        private bool _isDbLoaded;
+        private bool _isDirectoryLoaded;
         private int _currentTime;
         private string _osuDirectory;
         private string _songsPath;
@@ -32,16 +35,27 @@ namespace osu_taiko_SV_Helper
         private bool _readBeatmapError;
         private readonly Dictionary<string, string> _configDictionary = new Dictionary<string, string>();
 
+#if DEBUG
+        private const bool DebugMode = true;
+#else
+        private const bool DebugMode = false;
+#endif
+
+        [DllImport("kernel32.dll")]
+        static extern bool AllocConsole();
+
         public SvHelper()
         {
             InitializeComponent();
+            if (DebugMode) AllocConsole();
+
             CheckConfig();
             Thread getMemoryDataThread = new Thread(UpdateMemoryData)
             {
                 IsBackground = true
             };
             getMemoryDataThread.Start();
-            UpdateLoop();
+            Loop();
         }
 
         private void CheckConfig()
@@ -101,24 +115,80 @@ namespace osu_taiko_SV_Helper
             {
                 GithubUpdateChecker();
             }
-            
+
         }
 
-        private async void UpdateLoop()
+        private async void Loop()
         {
             while (true)
             {
-                await Task.Delay(1);
-                await Loop();
-            }
-        }
-
-        private Task Loop()
-        {
-            try
-            {
-                if (_memoryError)
+                await Task.Delay(15);
+                try
                 {
+                    if (_memoryError)
+                    {
+                        foreach (Control control in Controls)
+                        {
+                            if (control == WORK_STATUS_TEXT ||
+                                control == WORK_STATUS_LABEL ||
+                                control == Background_Picture_Box ||
+                                control == TITLE_LABEL ||
+                                control == ARTIST_LABEL ||
+                                control == VERSION_LABEL) continue;
+                            control.Enabled = false;
+                            WORK_STATUS_TEXT.Text = _readBeatmapError ? "Beatmap Error Occurred" : "Memory Error Occurred";
+                            WORK_STATUS_TEXT.ForeColor = Color.Red;
+                        }
+                        continue;
+                    }
+
+                    if (_firstLoad) continue;
+
+                    foreach (Control control in Controls)
+                    {
+                        if ((OFFSET_CHECKBOX16.Checked || OFFSET_CHECKBOX12.Checked) && control == OFFSET_TEXTBOX)
+                        {
+                            OFFSET_TEXTBOX.Enabled = false;
+                            continue;
+                        }
+                        control.Enabled = true;
+                    }
+
+                    if (!_working)
+                    {
+                        WORK_STATUS_TEXT.Text = "Ready! Waiting for your operation...";
+                        WORK_STATUS_TEXT.ForeColor = Color.LimeGreen;
+                    }
+
+                    void SetLabelText(Control label, string text)
+                    {
+                        const int maxLabelWidth = 380;
+                        label.MaximumSize = new Size(maxLabelWidth, int.MaxValue);
+
+                        if (TextRenderer.MeasureText(text, label.Font).Width > maxLabelWidth)
+                        {
+                            while (TextRenderer.MeasureText(text + "...", label.Font).Width > maxLabelWidth)
+                            {
+                                text = text.Substring(0, text.Length - 1);
+                            }
+                            text += "...";
+                        }
+
+                        label.Text = text;
+                    }
+
+                    SetLabelText(TITLE_LABEL, _memoryData.Title);
+                    SetLabelText(ARTIST_LABEL, _memoryData.Artist);
+                    SetLabelText(VERSION_LABEL, _memoryData.Version);
+                    VERSION_LABEL.Location = new Point(390 - VERSION_LABEL.Width, 2);
+
+                    if (_preData.BeatmapStr == _memoryData.BeatmapStr) continue;
+                    Background_Picture_Box.Image = GetBackgroundImage(_memoryData.BackgroundPath);
+                    _preData.BeatmapStr = _memoryData.BeatmapStr;
+                }
+                catch (Exception error)
+                {
+                    ErrorLogger(error);
                     foreach (Control control in Controls)
                     {
                         if (control == WORK_STATUS_TEXT ||
@@ -128,125 +198,10 @@ namespace osu_taiko_SV_Helper
                             control == ARTIST_LABEL ||
                             control == VERSION_LABEL) continue;
                         control.Enabled = false;
-                        WORK_STATUS_TEXT.Text = _readBeatmapError ? "Beatmap Error Occurred" : "Memory Error Occurred";
+                        WORK_STATUS_TEXT.Text = "Error Occurred";
                         WORK_STATUS_TEXT.ForeColor = Color.Red;
                     }
-                    return Task.CompletedTask;
                 }
-
-                if (_firstLoad) return Task.CompletedTask;
-                foreach (Control control in Controls)
-                {
-                    if ((OFFSET_CHECKBOX16.Checked || OFFSET_CHECKBOX12.Checked) && control == OFFSET_TEXTBOX)
-                    {
-                        OFFSET_TEXTBOX.Enabled = false;
-                        continue;
-                    }
-                    control.Enabled = true;
-                }
-
-                if (!_working)
-                {
-                    WORK_STATUS_TEXT.Text = "Ready! Waiting for your operation...";
-                    WORK_STATUS_TEXT.ForeColor = Color.LimeGreen;
-                }
-
-                string title = _memoryData.Title;
-                const int maxLabelWidth = 380;
-                TITLE_LABEL.MaximumSize = new Size(maxLabelWidth, int.MaxValue);
-                if (TextRenderer.MeasureText(title, TITLE_LABEL.Font).Width > maxLabelWidth)
-                {
-                    while (TextRenderer.MeasureText(title + "...", TITLE_LABEL.Font).Width > maxLabelWidth)
-                    {
-                        title = title.Substring(0, title.Length - 1);
-                    }
-
-                    title += "...";
-                }
-                TITLE_LABEL.Text = title;
-
-                string artist = _memoryData.Artist;
-                if (TextRenderer.MeasureText(artist, ARTIST_LABEL.Font).Width > maxLabelWidth)
-                {
-                    while (TextRenderer.MeasureText(artist + "...", ARTIST_LABEL.Font).Width > maxLabelWidth)
-                    {
-                        artist = artist.Substring(0, artist.Length - 1);
-                    }
-
-                    artist += "...";
-                }
-                ARTIST_LABEL.Text = artist;
-
-                string version = _memoryData.Version;
-                if (TextRenderer.MeasureText(version, VERSION_LABEL.Font).Width > maxLabelWidth)
-                {
-                    while (TextRenderer.MeasureText(version + "...", VERSION_LABEL.Font).Width > maxLabelWidth)
-                    {
-                        version = version.Substring(0, version.Length - 1);
-                    }
-
-                    version += "...";
-                }
-                VERSION_LABEL.Text = version;
-                VERSION_LABEL.Location = new Point(390 - VERSION_LABEL.Width, 2);
-
-                if (_preData.BeatmapStr == _memoryData.BeatmapStr) return Task.CompletedTask;
-                Background_Picture_Box.Image = GetBackgroundImage(_memoryData.BackgroundPath);
-                _preData.BeatmapStr = _memoryData.BeatmapStr;
-
-                return Task.CompletedTask;
-            }
-            catch (Exception error)
-            {
-                ErrorLogger(error);
-                foreach (Control control in Controls)
-                {
-                    if (control == WORK_STATUS_TEXT ||
-                        control == WORK_STATUS_LABEL ||
-                        control == Background_Picture_Box ||
-                        control == TITLE_LABEL ||
-                        control == ARTIST_LABEL ||
-                        control == VERSION_LABEL) continue;
-                    control.Enabled = false;
-                    WORK_STATUS_TEXT.Text = "Error Occurred";
-                    WORK_STATUS_TEXT.ForeColor = Color.Red;
-                }
-                return Task.CompletedTask;
-            }
-        }
-
-        private static Bitmap GetBackgroundImage(string path)
-        {
-            try
-            {
-                Bitmap bmp = new Bitmap(path);
-                const int resizeWidth = 392;
-                int resizeHeight = (int)(bmp.Height * ((double)resizeWidth / bmp.Width));
-                Bitmap resizeBmp = new Bitmap(resizeWidth, resizeHeight);
-                Graphics graphics = Graphics.FromImage(resizeBmp);
-                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
-                graphics.DrawImage(bmp, 0, -((resizeHeight - 102) / 2), resizeWidth, resizeHeight);
-                graphics.Dispose();
-
-                const double darknessFactor = 0.5;
-                for (int y = 0; y < resizeHeight; y++)
-                {
-                    for (int x = 0; x < resizeWidth; x++)
-                    {
-                        Color pixel = resizeBmp.GetPixel(x, y);
-                        int r = (int)(pixel.R * darknessFactor);
-                        int g = (int)(pixel.G * darknessFactor);
-                        int b = (int)(pixel.B * darknessFactor);
-                        Color darkPixel = Color.FromArgb(r, g, b);
-                        resizeBmp.SetPixel(x, y, darkPixel);
-                    }
-                }
-
-                return resizeBmp;
-            }
-            catch
-            {
-                return GetBackgroundImage("./src/no background.png");
             }
         }
 
@@ -256,33 +211,24 @@ namespace osu_taiko_SV_Helper
             {
                 try
                 {
-                    if (!_isDbLoaded)
+                    Thread.Sleep(15);
+                    if (Process.GetProcessesByName("osu!").Length == 0) throw new Exception("osu! is not running.");
+                    if (!_isDirectoryLoaded)
                     {
-                        if (Process.GetProcessesByName("osu!").Length > 0)
-                        {
-                            Process osuProcess = Process.GetProcessesByName("osu!")[0];
-                            _osuDirectory = Path.GetDirectoryName(osuProcess.MainModule.FileName);
-                        }
-                        else
-                        {
-                            using (RegistryKey registryKey = Registry.ClassesRoot.OpenSubKey("osu\\DefaultIcon"))
-                            {
-                                if (registryKey != null)
-                                {
-                                    string str = registryKey.GetValue(null).ToString().Remove(0, 1);
-                                    _osuDirectory = str.Remove(str.Length - 11);
-                                }
-                            }
-                        }
+                        Process osuProcess = Process.GetProcessesByName("osu!")[0];
+                        string tempOsuDirectory = Path.GetDirectoryName(osuProcess.MainModule.FileName);
+                        DebugLogger($"osu! directory: {tempOsuDirectory}");
+                        if (string.IsNullOrEmpty(tempOsuDirectory) || !Directory.Exists(tempOsuDirectory))
+                            throw new Exception("osu! directory not found.");
 
-                        if (string.IsNullOrEmpty(_osuDirectory) || !Directory.Exists(_osuDirectory))
-                        {
-                            _memoryError = true;
-                            continue;
-                        }
+                        _osuDirectory = tempOsuDirectory;
+                        _songsPath = GetSongsFolderLocation(_osuDirectory);
+                        _isDirectoryLoaded = true;
+                        DebugLogger($"Songs folder: {_songsPath}");
+                        DebugLogger("Directory Data initialized.");
 
                         _songsPath = GetSongsFolderLocation(_osuDirectory);
-                        _isDbLoaded = true;
+                        _isDirectoryLoaded = true;
                     }
 
                     if (!_sreader.CanRead)
@@ -312,6 +258,7 @@ namespace osu_taiko_SV_Helper
                         _memoryError = false;
                         continue;
                     }
+
                     OsuParsers.Beatmaps.Beatmap beatmapData = BeatmapDecoder.Decode(osuBeatmapPath);
                     _memoryData.Title = beatmapData.MetadataSection.Title;
                     _memoryData.Artist = beatmapData.MetadataSection.Artist;
@@ -333,30 +280,15 @@ namespace osu_taiko_SV_Helper
             }
         }
 
-        private static string GetSongsFolderLocation(string osuDirectory)
-        {
-            foreach (string file in Directory.GetFiles(osuDirectory))
-            {
-                if (!Regex.IsMatch(file, "^osu!\\.+\\.cfg$")) continue;
-                foreach (string readLine in File.ReadLines(file))
-                {
-                    if (!readLine.StartsWith("BeatmapDirectory")) continue;
-                    return Path.Combine(osuDirectory, readLine.Split('=')[1].Trim(' '));
-                }
-            }
-            return Path.Combine(osuDirectory, "Songs");
-        }
-
         private async void MAKE_BUTTON_Click(object sender, EventArgs e)
         {
             MAKE_BUTTON.Enabled = false;
             UNDO_BUTTON.Enabled = false;
 
-            bool result = ValueChecker();
-            if (!result)
+            var reasons = ValueChecker();
+            if (reasons.Any())
             {
-                MAKE_BUTTON.Enabled = true;
-                UNDO_BUTTON.Enabled = true;
+                ShowErrorMessage("Failed to apply SV. The reasons are as follows.\n" + string.Join("\n", reasons));
                 return;
             }
 
@@ -374,7 +306,7 @@ namespace osu_taiko_SV_Helper
                 BpmCompatibility = BPM_COMP_CHECKBOX.Checked,
                 BaseBpm = string.IsNullOrEmpty(BASE_BPM_TEXTBOX.Text) || !USE_CUSTOM_BPM_CHECKBOX.Checked || BASE_BPM_TEXTBOX.Text == "0" ? 0 : double.Parse(BASE_BPM_TEXTBOX.Text)
             };
-            
+
             try
             {
                 _working = true;
@@ -414,53 +346,16 @@ namespace osu_taiko_SV_Helper
             }
         }
 
-        private static async void GithubUpdateChecker()
+        private IEnumerable<string> ValueChecker()
         {
-            try
-            {
-                const string softwareReleasesLatest = "https://github.com/puk06/osutaiko-SV-Helper/releases/latest";
-                if (!File.Exists("./src/version"))
-                {
-                    MessageBox.Show("versionファイルが存在しないのでアップデートチェックは無視されます。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                StreamReader currentVersion = new StreamReader("./src/version");
-                string currentVersionString = await currentVersion.ReadToEndAsync();
-                currentVersion.Close();
-                if (currentVersionString.Contains("beta"))
-                {
-                    MessageBox.Show("betaバージョンをお使いのようです！もしバグや変な挙動を見つけたら報告お願いします！\n(定期的に更新されるので、Twitter(@Hoshino1_)を定期的に確認してください！！)", "Betaバージョン", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
-                }
-                var githubClient = new GitHubClient(new Octokit.ProductHeaderValue("osutaiko-SV-Helper"));
-                var latestRelease = await githubClient.Repository.Release.GetLatest("puk06", "osutaiko-SV-Helper");
-                if (latestRelease.Name == currentVersionString) return;
-                DialogResult result = MessageBox.Show($"最新バージョンがあります！\n\n現在: {currentVersionString} \n更新後: {latestRelease.Name}\n\nダウンロードページを開きますか？", "アップデートのお知らせ", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-                if (result == DialogResult.Yes) Process.Start(softwareReleasesLatest);
-            }
-            catch
-            {
-                MessageBox.Show("アップデートチェック中にエラーが発生しました", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-
-
-        private static void ErrorLogger(Exception error)
-        {
-            string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-            File.WriteAllText("Error.log", $"[{currentTime}] " + error.Message + "\n" + error.StackTrace);
-        }
-
-        private bool ValueChecker()
-        {
+            IEnumerable<string> reasons = Array.Empty<string>();
 
             if (Regex.IsMatch(SV_STARTTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
             {
                 string[] time = Regex.Replace(SV_STARTTIME_TEXTBOX.Text, "[^0-9:]", "").Split(':');
                 if (!int.TryParse(time[0], out _) || !int.TryParse(time[1], out _) || !int.TryParse(time[2], out _))
                 {
-                    MessageBox.Show("開始時間の入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
+                    AddValueToArray(ref reasons, "❌️ 開始時間の入力形式が間違っています。");
                 }
 
                 int minute = int.Parse(time[0]);
@@ -475,8 +370,7 @@ namespace osu_taiko_SV_Helper
                 string[] time = Regex.Replace(SV_ENDTIME_TEXTBOX.Text, "[^0-9:]", "").Split(':');
                 if (!int.TryParse(time[0], out _) || !int.TryParse(time[1], out _) || !int.TryParse(time[2], out _))
                 {
-                    MessageBox.Show("終了時間の入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
+                    AddValueToArray(ref reasons, "❌️ 終了時間の入力形式が間違っています。");
                 }
 
                 int minute = int.Parse(time[0]);
@@ -488,100 +382,87 @@ namespace osu_taiko_SV_Helper
 
             if (string.IsNullOrEmpty(SV_STARTTIME_TEXTBOX.Text) || string.IsNullOrEmpty(SV_ENDTIME_TEXTBOX.Text))
             {
-                MessageBox.Show("開始時間と終了時間を入力してください。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始時間と終了時間を入力してください。");
             }
 
             if (!int.TryParse(SV_STARTTIME_TEXTBOX.Text, out _) || !int.TryParse(SV_ENDTIME_TEXTBOX.Text, out _))
             {
-                MessageBox.Show("開始時間か終了時間の入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始時間か終了時間の入力形式が間違っています。");
             }
-            
+
             if (int.Parse(SV_ENDTIME_TEXTBOX.Text) <= int.Parse(SV_STARTTIME_TEXTBOX.Text))
             {
-                MessageBox.Show("終了時間を開始時間と同じ、もしくはより早くすることはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 終了時間を開始時間と同じ、もしくはより早くすることはできません。");
             }
-            
+
             if (int.Parse(SV_STARTTIME_TEXTBOX.Text) < 0 || int.Parse(SV_ENDTIME_TEXTBOX.Text) < 0)
             {
-                MessageBox.Show("時間に負の値を入力することはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 時間に負の値を入力することはできません。");
             }
 
             if (SV_STARTTIME_TEXTBOX.Text == "0" && SV_ENDTIME_TEXTBOX.Text == "0")
             {
-                MessageBox.Show("開始時間と終了時間に同時に0を入力することはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始時間と終了時間に同時に0を入力することはできません。");
             }
-
 
             if (string.IsNullOrEmpty(SV_START_TEXTBOX.Text) || string.IsNullOrEmpty(SV_END_TEXTBOX.Text))
             {
-                MessageBox.Show("開始SVと終了SVを入力してください。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始SVと終了SVを入力してください。");
             }
-            
+
             if (!double.TryParse(SV_START_TEXTBOX.Text, out _) || !double.TryParse(SV_END_TEXTBOX.Text, out _))
             {
-                MessageBox.Show("開始SVか終了SVの入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始SVか終了SVの入力形式が間違っています。");
             }
-            
+
             if (SV_START_TEXTBOX.Text == "0" || SV_END_TEXTBOX.Text == "0")
             {
-                MessageBox.Show("開始SVと終了SVに0を入力することはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始SVと終了SVに0を入力することはできません。");
             }
 
             if (double.Parse(SV_START_TEXTBOX.Text) < 0 || double.Parse(SV_END_TEXTBOX.Text) < 0)
             {
-                MessageBox.Show("SVに負の値を入力することはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ SVに負の値を入力することはできません。");
             }
-            
-            
-            
+
             if (string.IsNullOrEmpty(VOLUME_START_TEXTBOX.Text) || string.IsNullOrEmpty(VOLUME_END_TEXTBOX.Text))
             {
-                MessageBox.Show("開始ボリュームと終了ボリュームを入力してください。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始ボリュームと終了ボリュームを入力してください。");
             }
-            
+
             if (!int.TryParse(VOLUME_START_TEXTBOX.Text, out _) || !int.TryParse(VOLUME_END_TEXTBOX.Text, out _))
             {
-                MessageBox.Show("開始ボリュームか終了ボリュームの入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                AddValueToArray(ref reasons, "❌️ 開始ボリュームか終了ボリュームの入力形式が間違っています。");
             }
 
             if (int.Parse(VOLUME_START_TEXTBOX.Text) > 100) VOLUME_START_TEXTBOX.Text = "100";
             if (int.Parse(VOLUME_END_TEXTBOX.Text) > 100) VOLUME_END_TEXTBOX.Text = "100";
             if (int.Parse(VOLUME_START_TEXTBOX.Text) < 0) VOLUME_START_TEXTBOX.Text = "1";
             if (int.Parse(VOLUME_END_TEXTBOX.Text) < 0) VOLUME_END_TEXTBOX.Text = "1";
-            
+
             if (int.TryParse(OFFSET_TEXTBOX.Text, out int offset))
             {
                 if (offset < 0) OFFSET_TEXTBOX.Text = (-offset).ToString();
             }
             else
             {
-                MessageBox.Show("オフセットの入力形式が間違っています。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                OFFSET_TEXTBOX.Text = "0";
+                AddValueToArray(ref reasons, "❌️ オフセットの入力形式が間違っています。");
             }
 
-            if (!USE_CUSTOM_BPM_CHECKBOX.Checked) return true;
+            if (!USE_CUSTOM_BPM_CHECKBOX.Checked) return reasons;
+
             if (!double.TryParse(BASE_BPM_TEXTBOX.Text, out _))
             {
                 BASE_BPM_TEXTBOX.Text = "";
             }
             else if (double.Parse(BASE_BPM_TEXTBOX.Text) <= 0)
             {
-                MessageBox.Show("ベースBPMに0以下の値を入力することはできません。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                BASE_BPM_TEXTBOX.Text = "";
+                AddValueToArray(ref reasons, "❌️ ベースBPMに0以下の値を入力することはできません。");
             }
 
-            return true;
+            return reasons;
         }
 
         private void SET_START_TIME_BUTTON_Click(object sender, EventArgs e) => SV_STARTTIME_TEXTBOX.Text = _currentTime.ToString();
@@ -650,7 +531,7 @@ namespace osu_taiko_SV_Helper
                     MAKE_BUTTON.Enabled = true;
                     UNDO_BUTTON.Enabled = true;
                 }
-            } 
+            }
             else
             {
                 _working = true;
@@ -660,24 +541,6 @@ namespace osu_taiko_SV_Helper
                 await Task.Delay(3000);
                 _working = false;
             }
-        }
-
-        private static string FindLatestFile(IEnumerable<string> files)
-        {
-            DateTime latestDate = DateTime.MinValue;
-            string latestFile = "";
-
-            foreach (string file in files)
-            {
-                string fileName = Path.GetFileNameWithoutExtension(file);
-                if (!DateTime.TryParseExact(fileName, "yyyy_MM_dd_HH_mm_ss_fff", null,
-                        System.Globalization.DateTimeStyles.None, out DateTime fileDate)) continue;
-                if (fileDate <= latestDate) continue;
-                latestDate = fileDate;
-                latestFile = file;
-            }
-            
-            return latestFile;
         }
 
         private void OFFSET_CHECKBOX16_CheckedChanged(object sender, EventArgs e)
@@ -704,19 +567,5 @@ namespace osu_taiko_SV_Helper
             BASE_BPM_LABEL.Enabled = USE_CUSTOM_BPM_CHECKBOX.Checked;
             BASE_BPM_TEXTBOX.Enabled = USE_CUSTOM_BPM_CHECKBOX.Checked;
         }
-    }
-
-    public class BeatmapData
-    {
-        public string BeatmapStr { get; set; }
-    }
-
-    public class MemoryData
-    {
-        public string Title { get; set; }
-        public string Artist { get; set; }
-        public string Version { get; set; }
-        public string BackgroundPath { get; set;}
-        public string BeatmapStr { get; set; }
     }
 }

@@ -66,7 +66,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Beatmap.cs" />
+    <Compile Include="Classes\Beatmap.cs" />
+    <Compile Include="Classes\BeatmapData.cs" />
+    <Compile Include="Classes\Helper.cs" />
+    <Compile Include="Classes\MemoryData.cs" />
     <Compile Include="Main.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -104,5 +107,6 @@
   <ItemGroup>
     <Content Include="icon.ico" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
