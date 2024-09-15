@@ -67,9 +67,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Classes\Beatmap.cs" />
+    <Compile Include="Classes\BeatmapArgs.cs" />
     <Compile Include="Classes\BeatmapData.cs" />
+    <Compile Include="Classes\Bpm.cs" />
     <Compile Include="Classes\Helper.cs" />
+    <Compile Include="Classes\HitObject.cs" />
     <Compile Include="Classes\MemoryData.cs" />
+    <Compile Include="Classes\TimingPoint.cs" />
     <Compile Include="Main.cs">
       <SubType>Form</SubType>
     </Compile>

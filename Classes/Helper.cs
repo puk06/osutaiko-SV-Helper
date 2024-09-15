@@ -91,12 +91,6 @@ namespace osu_taiko_SV_Helper.Classes
             }
         }
 
-        public static void ErrorLogger(Exception error)
-        {
-            string currentTime = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
-            File.WriteAllText("Error.log", $"[{currentTime}] " + error.Message + "\n" + error.StackTrace);
-        }
-
         public static void DebugLogger(string message)
         {
             Debug.WriteLine("[" + DateTime.Now + "] " + message);

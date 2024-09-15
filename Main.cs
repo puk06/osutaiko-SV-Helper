@@ -46,8 +46,8 @@ namespace osu_taiko_SV_Helper
 
         public SvHelper()
         {
-            InitializeComponent();
             if (DebugMode) AllocConsole();
+            InitializeComponent();
 
             CheckConfig();
             Thread getMemoryDataThread = new Thread(UpdateMemoryData)
@@ -188,7 +188,7 @@ namespace osu_taiko_SV_Helper
                 }
                 catch (Exception error)
                 {
-                    ErrorLogger(error);
+                    DebugLogger(error.Message);
                     foreach (Control control in Controls)
                     {
                         if (control == WORK_STATUS_TEXT ||
@@ -274,7 +274,7 @@ namespace osu_taiko_SV_Helper
                 }
                 catch (Exception error)
                 {
-                    ErrorLogger(error);
+                    DebugLogger(error.Message);
                     _memoryError = true;
                 }
             }
@@ -332,7 +332,7 @@ namespace osu_taiko_SV_Helper
             }
             catch (Exception error)
             {
-                ErrorLogger(error);
+                DebugLogger(error.Message);
                 WORK_STATUS_TEXT.Text = "Error Occurred";
                 WORK_STATUS_TEXT.ForeColor = Color.Red;
                 System.Media.SystemSounds.Hand.Play();
@@ -519,7 +519,7 @@ namespace osu_taiko_SV_Helper
                 }
                 catch (Exception error)
                 {
-                    ErrorLogger(error);
+                    DebugLogger(error.Message);
                     WORK_STATUS_TEXT.Text = "Error Occurred";
                     WORK_STATUS_TEXT.ForeColor = Color.Red;
                     System.Media.SystemSounds.Hand.Play();
