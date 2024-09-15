@@ -302,6 +302,7 @@ namespace osu_taiko_SV_Helper
             this.ARROW_LABEL1.Size = new System.Drawing.Size(30, 27);
             this.ARROW_LABEL1.TabIndex = 16;
             this.ARROW_LABEL1.Text = "→";
+            this.ARROW_LABEL1.Click += new System.EventHandler(this.ARROW_LABEL1_Click);
             // 
             // ARROW_LABEL2
             // 
@@ -312,6 +313,7 @@ namespace osu_taiko_SV_Helper
             this.ARROW_LABEL2.Size = new System.Drawing.Size(30, 27);
             this.ARROW_LABEL2.TabIndex = 17;
             this.ARROW_LABEL2.Text = "→";
+            this.ARROW_LABEL2.Click += new System.EventHandler(this.ARROW_LABEL2_Click);
             // 
             // ARROW_LABEL3
             // 
@@ -322,6 +324,7 @@ namespace osu_taiko_SV_Helper
             this.ARROW_LABEL3.Size = new System.Drawing.Size(30, 27);
             this.ARROW_LABEL3.TabIndex = 18;
             this.ARROW_LABEL3.Text = "→";
+            this.ARROW_LABEL3.Click += new System.EventHandler(this.ARROW_LABEL3_Click);
             // 
             // OFFSET_LABEL
             // 

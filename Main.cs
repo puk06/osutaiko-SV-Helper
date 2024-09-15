@@ -13,7 +13,6 @@ using OsuMemoryDataProvider.OsuMemoryModels;
 using OsuParsers.Decoders;
 using osu_taiko_SV_Helper.Classes;
 using static osu_taiko_SV_Helper.Classes.Helper;
-using System.Runtime.InteropServices;
 
 namespace osu_taiko_SV_Helper
 {
@@ -35,18 +34,8 @@ namespace osu_taiko_SV_Helper
         private bool _readBeatmapError;
         private readonly Dictionary<string, string> _configDictionary = new Dictionary<string, string>();
 
-#if DEBUG
-        private const bool DebugMode = true;
-#else
-        private const bool DebugMode = false;
-#endif
-
-        [DllImport("kernel32.dll")]
-        static extern bool AllocConsole();
-
         public SvHelper()
         {
-            if (DebugMode) AllocConsole();
             InitializeComponent();
 
             CheckConfig();
@@ -64,7 +53,7 @@ namespace osu_taiko_SV_Helper
             {
                 SV_MODE_COMBOBOX.SelectedIndex = 0;
                 MODE_COMBOBOX.SelectedIndex = 0;
-                GithubUpdateChecker();
+                GithubUpdateChecker(CurrentVersion);
                 return;
             }
 
@@ -113,7 +102,7 @@ namespace osu_taiko_SV_Helper
             BPM_COMP_CHECKBOX.Checked = _configDictionary.TryGetValue("BPM_COMPATIBILITY", out string test4) && test4 == "true";
             if (_configDictionary.TryGetValue("UPDATE_CHECK", out string test5) && test5 == "true")
             {
-                GithubUpdateChecker();
+                GithubUpdateChecker(CurrentVersion);
             }
 
         }
@@ -566,6 +555,21 @@ namespace osu_taiko_SV_Helper
             BASE_BPM_TEXTBOX.Visible = USE_CUSTOM_BPM_CHECKBOX.Checked;
             BASE_BPM_LABEL.Enabled = USE_CUSTOM_BPM_CHECKBOX.Checked;
             BASE_BPM_TEXTBOX.Enabled = USE_CUSTOM_BPM_CHECKBOX.Checked;
+        }
+
+        private void ARROW_LABEL1_Click(object sender, EventArgs e)
+        {
+            (SV_STARTTIME_TEXTBOX.Text, SV_ENDTIME_TEXTBOX.Text) = (SV_ENDTIME_TEXTBOX.Text, SV_STARTTIME_TEXTBOX.Text);
+        }
+
+        private void ARROW_LABEL2_Click(object sender, EventArgs e)
+        {
+            (SV_START_TEXTBOX.Text, SV_END_TEXTBOX.Text) = (SV_END_TEXTBOX.Text, SV_START_TEXTBOX.Text);
+        }
+
+        private void ARROW_LABEL3_Click(object sender, EventArgs e)
+        {
+            (VOLUME_START_TEXTBOX.Text, VOLUME_END_TEXTBOX.Text) = (VOLUME_END_TEXTBOX.Text, VOLUME_START_TEXTBOX.Text);
         }
     }
 }

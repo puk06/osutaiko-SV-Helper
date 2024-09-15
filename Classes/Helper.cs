@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace osu_taiko_SV_Helper.Classes
@@ -61,33 +62,70 @@ namespace osu_taiko_SV_Helper.Classes
             return Path.Combine(osuDirectory, "Songs");
         }
 
-        public static async void GithubUpdateChecker()
+        public static async void GithubUpdateChecker(string currentVersion)
         {
             try
             {
-                const string softwareReleasesLatest = "https://github.com/puk06/osutaiko-SV-Helper/releases/latest";
-                if (!File.Exists("./src/version"))
+                var latestRelease = await GetVersion(currentVersion);
+                if (latestRelease == currentVersion) return;
+                DialogResult result =
+                    MessageBox.Show($"最新バージョンがあります！\n\n現在: {currentVersion} \n更新後: {latestRelease}\n\nダウンロードしますか？",
+                        "アップデートのお知らせ", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+                if (result != DialogResult.Yes) return;
+
+                if (!File.Exists("./Updater/Software Updater.exe"))
                 {
-                    MessageBox.Show("versionファイルが存在しないのでアップデートチェックは無視されます。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("アップデーターが見つかりませんでした。手動でダウンロードしてください。", "エラー", MessageBoxButtons.OK,
+                        MessageBoxIcon.Error);
                     return;
                 }
-                StreamReader currentVersion = new StreamReader("./src/version");
-                string currentVersionString = await currentVersion.ReadToEndAsync();
-                currentVersion.Close();
-                if (currentVersionString.Contains("beta"))
+
+                string updaterPath = Path.GetFullPath("./Updater/Software Updater.exe");
+                const string author = "puk06";
+                const string repository = "osutaiko-SV-Helper";
+                const string executableName = "osu!taiko SV Helper";
+                ProcessStartInfo args = new ProcessStartInfo()
                 {
-                    MessageBox.Show("betaバージョンをお使いのようです！もしバグや変な挙動を見つけたら報告お願いします！\n(定期的に更新されるので、Twitter(@Hoshino1_)を定期的に確認してください！！)", "Betaバージョン", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    return;
+                    FileName = $"\"{updaterPath}\"",
+                    Arguments = $"\"{latestRelease}\" \"{author}\" \"{repository}\" \"{executableName}\"",
+                    UseShellExecute = true
+                };
+
+                Process.Start(args);
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show("アップデートチェック中にエラーが発生しました" + exception.Message, "エラー", MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+        public static async Task<string> GetVersion(string currentVersion)
+        {
+            try
+            {
+                var releaseType = currentVersion.Split('-')[1];
+                var githubClient = new GitHubClient(new ProductHeaderValue("osutaiko-SV-Helper"));
+                var tags = await githubClient.Repository.GetAllTags("puk06", "osutaiko-SV-Helper");
+                string latestVersion = currentVersion;
+                foreach (var tag in tags)
+                {
+                    if (releaseType == "Release")
+                    {
+                        if (tag.Name.Split('-')[1] != "Release") continue;
+                        latestVersion = tag.Name;
+                        break;
+                    }
+
+                    latestVersion = tag.Name;
+                    break;
                 }
-                var githubClient = new GitHubClient(new Octokit.ProductHeaderValue("osutaiko-SV-Helper"));
-                var latestRelease = await githubClient.Repository.Release.GetLatest("puk06", "osutaiko-SV-Helper");
-                if (latestRelease.Name == currentVersionString) return;
-                DialogResult result = MessageBox.Show($"最新バージョンがあります！\n\n現在: {currentVersionString} \n更新後: {latestRelease.Name}\n\nダウンロードページを開きますか？", "アップデートのお知らせ", MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-                if (result == DialogResult.Yes) Process.Start(softwareReleasesLatest);
+
+                return latestVersion;
             }
             catch
             {
-                MessageBox.Show("アップデートチェック中にエラーが発生しました", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw new Exception("アップデートの取得に失敗しました");
             }
         }
 
