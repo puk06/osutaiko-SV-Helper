@@ -2,7 +2,7 @@
 {
     public class TimingPoint
     {
-        public int Time { get; set; }
+        public double Time { get; set; }
         public double BeatLength { get; set; }
         public int Meter { get; set; }
         public int SampleSet { get; set; }

@@ -63,7 +63,7 @@ namespace osu_taiko_SV_Helper.Classes
                     string[] objects = line.Split(',');
                     return new TimingPoint
                     {
-                        Time = int.Parse(objects[0]),
+                        Time = double.Parse(objects[0]),
                         BeatLength = double.Parse(objects[1]),
                         Meter = int.Parse(objects[2]),
                         SampleSet = int.Parse(objects[3]),
@@ -312,7 +312,7 @@ namespace osu_taiko_SV_Helper.Classes
             _timingPoints.Sort((a, b) =>
             {
                 if (a.Time == b.Time) return a.Uninherited - b.Uninherited;
-                return b.Time - a.Time;
+                return a.Time.CompareTo(b.Time);
             });
             return Task.CompletedTask;
         }

@@ -2,7 +2,7 @@
 {
     public class Bpm
     {
-        public int Time { get; set; }
+        public double Time { get; set; }
         public double Value { get; set; }
     }
 }
