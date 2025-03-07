@@ -87,7 +87,7 @@ namespace osu_taiko_SV_Helper.Classes
                 ProcessStartInfo args = new ProcessStartInfo()
                 {
                     FileName = $"\"{updaterPath}\"",
-                    Arguments = $"\"{latestRelease}\" \"{author}\" \"{repository}\" \"{executableName}\"",
+                    Arguments = $"\"{latestRelease}\" \"{author}\" \"{repository}\" \"{executableName}\" \"Config.cfg\"",
                     UseShellExecute = true
                 };
 

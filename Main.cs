@@ -18,7 +18,7 @@ namespace osu_taiko_SV_Helper
 {
     public partial class SvHelper : Form
     {
-        private const string CurrentVersion = "v1.0.0-Release";
+        private const string CurrentVersion = "v1.0.1-Release";
         private readonly BeatmapData _preData = new BeatmapData();
         private readonly StructuredOsuMemoryReader _sreader = new StructuredOsuMemoryReader();
         private readonly OsuBaseAddresses _baseAddresses = new OsuBaseAddresses();

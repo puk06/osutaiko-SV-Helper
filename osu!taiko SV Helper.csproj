@@ -39,14 +39,14 @@
     <Reference Include="Coosu.Database, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\Coosu.Database.2.3.40\lib\netstandard2.0\Coosu.Database.dll</HintPath>
     </Reference>
-    <Reference Include="Octokit, Version=10.0.0.0, Culture=neutral, PublicKeyToken=0be8860aee462442, processorArchitecture=MSIL">
-      <HintPath>packages\Octokit.10.0.0\lib\netstandard2.0\Octokit.dll</HintPath>
+    <Reference Include="Octokit, Version=14.0.0.0, Culture=neutral, PublicKeyToken=0be8860aee462442, processorArchitecture=MSIL">
+      <HintPath>packages\Octokit.14.0.0\lib\netstandard2.0\Octokit.dll</HintPath>
     </Reference>
     <Reference Include="OsuMemoryDataProvider, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\OsuMemoryDataProvider.0.10.3\lib\net472\OsuMemoryDataProvider.dll</HintPath>
     </Reference>
-    <Reference Include="OsuParsers, Version=1.7.1.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>packages\OsuParsers.1.7.1\lib\netstandard2.0\OsuParsers.dll</HintPath>
+    <Reference Include="OsuParsers, Version=1.7.2.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>packages\OsuParsers.1.7.2\lib\netstandard2.0\OsuParsers.dll</HintPath>
     </Reference>
     <Reference Include="ProcessMemoryDataFinder, Version=0.8.5.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>packages\ProcessMemoryDataFinder.0.8.5\lib\net472\ProcessMemoryDataFinder.dll</HintPath>
@@ -55,6 +55,9 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Messaging" />
     <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors, Version=4.1.5.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>packages\System.Numerics.Vectors.4.6.0\lib\net462\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -113,15 +116,12 @@
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
-
   <Target Name="CopyAndRunBuildJs" AfterTargets="AfterBuild">
-		<!-- Copy build.js to the output directory -->
-		<Copy SourceFiles="build.js" DestinationFolder="$(OutDir)" />
-
-		<!-- Run node build.js with the output directory as the working directory -->
-		<Exec Command="node build.js" WorkingDirectory="$(OutDir)" />
-
-		<!-- Run "osu!taiko SV Helper.exe" from the bin/build directory -->
-		<!-- <Exec Command="osu!taiko SV Helper.exe" WorkingDirectory="bin\build" /> -->
-	</Target>
+    <!-- Copy build.js to the output directory -->
+    <Copy SourceFiles="build.js" DestinationFolder="$(OutDir)" />
+    <!-- Run node build.js with the output directory as the working directory -->
+    <Exec Command="node build.js" WorkingDirectory="$(OutDir)" />
+    <!-- Run "osu!taiko SV Helper.exe" from the bin/build directory -->
+    <!-- <Exec Command="osu!taiko SV Helper.exe" WorkingDirectory="bin\build" /> -->
+  </Target>
 </Project>
