@@ -19,7 +19,6 @@ namespace osu_taiko_SV_Helper
     public partial class SvHelper : Form
     {
         private const string CurrentVersion = "v1.0.1-Release";
-        private readonly BeatmapData _preData = new BeatmapData();
         private readonly StructuredOsuMemoryReader _sreader = new StructuredOsuMemoryReader();
         private readonly OsuBaseAddresses _baseAddresses = new OsuBaseAddresses();
         private readonly MemoryData _memoryData = new MemoryData();
@@ -32,6 +31,7 @@ namespace osu_taiko_SV_Helper
         private bool _memoryError;
         private bool _firstLoad = true;
         private bool _readBeatmapError;
+        private string _preBackgroundPath;
         private readonly Dictionary<string, string> _configDictionary = new Dictionary<string, string>();
 
         public SvHelper()
@@ -171,9 +171,9 @@ namespace osu_taiko_SV_Helper
                     SetLabelText(VERSION_LABEL, _memoryData.Version);
                     VERSION_LABEL.Location = new Point(390 - VERSION_LABEL.Width, 2);
 
-                    if (_preData.BeatmapStr == _memoryData.BeatmapStr) continue;
+                    if (_preBackgroundPath == _memoryData.BackgroundPath) continue;
                     Background_Picture_Box.Image = GetBackgroundImage(_memoryData.BackgroundPath);
-                    _preData.BeatmapStr = _memoryData.BeatmapStr;
+                    _preBackgroundPath = _memoryData.BackgroundPath;
                 }
                 catch (Exception error)
                 {
@@ -233,31 +233,64 @@ namespace osu_taiko_SV_Helper
 
                     string osuBeatmapPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName ?? "",
                         _baseAddresses.Beatmap.OsuFileName ?? "");
-                    if (!File.Exists(osuBeatmapPath))
-                    {
-                        _memoryError = true;
-                        _readBeatmapError = true;
-                        continue;
-                    }
-                    _readBeatmapError = false;
 
-                    _currentBeatmapPath = osuBeatmapPath;
-                    if (_memoryData.BeatmapStr == _baseAddresses.Beatmap.MapString)
+                    if (osuBeatmapPath == _songsPath || _memoryData.BeatmapPath == osuBeatmapPath)
                     {
                         _memoryError = false;
                         continue;
                     }
 
+                    _memoryData.BeatmapPath = osuBeatmapPath;
+                    _currentBeatmapPath = osuBeatmapPath;
+                    DebugLogger("Map change detected.");
+                    DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+
+                    if (!File.Exists(osuBeatmapPath))
+                    {
+                        // Fix the beatmap path(idk why)
+                        DebugLogger("Beatmap file not found. Trying to fix the path... (Attempting 1)");
+                        osuBeatmapPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName?.Trim() ?? "", _baseAddresses.Beatmap.OsuFileName ?? "");
+                        DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+
+                        if (!File.Exists(osuBeatmapPath))
+                        {
+                            DebugLogger("Beatmap file not found. Trying to fix the path again... (Attempting 2)");
+                            osuBeatmapPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName ?? "", _baseAddresses.Beatmap.OsuFileName?.Trim() ?? "");
+                            DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+                        }
+
+                        if (!File.Exists(osuBeatmapPath))
+                        {
+                            DebugLogger("Beatmap file not found. Trying to fix the path again... (Attempting 3)");
+                            osuBeatmapPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName?.Trim() ?? "", _baseAddresses.Beatmap.OsuFileName.Trim() ?? "");
+                            DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+                        }
+
+                        if (File.Exists(osuBeatmapPath)) DebugLogger("Beatmap file found.");
+                    }
+
+                    if (!File.Exists(osuBeatmapPath))
+                    {
+                        _memoryError = true;
+                        _readBeatmapError = true;
+                        _currentBeatmapPath = osuBeatmapPath;
+                        continue;
+                    }
+
+                    _currentBeatmapPath = osuBeatmapPath;
+
+                    _readBeatmapError = false;
+
                     OsuParsers.Beatmaps.Beatmap beatmapData = BeatmapDecoder.Decode(osuBeatmapPath);
                     _memoryData.Title = beatmapData.MetadataSection.Title;
                     _memoryData.Artist = beatmapData.MetadataSection.Artist;
                     _memoryData.Version = beatmapData.MetadataSection.Version;
-                    _memoryData.BeatmapStr = _baseAddresses.Beatmap.MapString;
 
                     string backgroundPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName ?? "",
                         beatmapData.EventsSection.BackgroundImage ?? "");
                     if (!File.Exists(backgroundPath)) backgroundPath = "./src/no background.png";
                     _memoryData.BackgroundPath = backgroundPath;
+
                     _memoryError = false;
                     if (_firstLoad) _firstLoad = false;
                 }

@@ -71,7 +71,6 @@
   <ItemGroup>
     <Compile Include="Classes\Beatmap.cs" />
     <Compile Include="Classes\BeatmapArgs.cs" />
-    <Compile Include="Classes\BeatmapData.cs" />
     <Compile Include="Classes\Bpm.cs" />
     <Compile Include="Classes\Helper.cs" />
     <Compile Include="Classes\HitObject.cs" />

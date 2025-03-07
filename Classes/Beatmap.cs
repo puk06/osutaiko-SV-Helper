@@ -19,6 +19,7 @@ namespace osu_taiko_SV_Helper.Classes
 
         private const string TimingpointsSection = "[TimingPoints]";
         private const string HitobjectsSection = "[HitObjects]";
+        private string[] NewLine = { Environment.NewLine };
 
         public Task BeatmapParser(string beatmapPath, BeatmapArgs args)
         {
@@ -35,20 +36,28 @@ namespace osu_taiko_SV_Helper.Classes
         public Task Backup()
         {
             const string backupFolderPath = "./Backups/";
-            if (!Directory.Exists(backupFolderPath)) Directory.CreateDirectory(backupFolderPath);
+            if (!Directory.Exists(backupFolderPath))
+            {
+                Directory.CreateDirectory(backupFolderPath);
+            }
+
             string backupPath = Path.GetFileNameWithoutExtension(_beatmapPath);
             if (!Directory.Exists(Path.Combine(backupFolderPath, backupPath)))
+            {
                 Directory.CreateDirectory(Path.Combine(backupFolderPath, backupPath));
+            }
+
             string fileName = DateTime.Now.ToString("yyyy_MM_dd_HH_mm_ss_fff") + ".osu";
             File.Copy(_beatmapPath, Path.Combine(backupFolderPath, backupPath, fileName), true);
+
             return Task.CompletedTask;
         }
 
         public Task Parse()
         {
             _beatmap = _rawbeatmap
-                .Split(new[] { "\r\n", "\n" }, StringSplitOptions.None)
-                .Where(line => line != "")
+                .Split(NewLine, StringSplitOptions.None)
+                .Where(line => !string.IsNullOrWhiteSpace(line))
                 .ToArray();
 
             int timingPointsIndex = Array.IndexOf(_beatmap, TimingpointsSection);
@@ -57,7 +66,7 @@ namespace osu_taiko_SV_Helper.Classes
             _timingPoints = _beatmap
                 .Skip(timingPointsIndex + 1)
                 .Take(hitObjectsIndex - timingPointsIndex - 1)
-                .Where(line => line != "")
+                .Where(line => !string.IsNullOrWhiteSpace(line))
                 .Select(line =>
                 {
                     string[] objects = line.Split(',');
@@ -77,7 +86,7 @@ namespace osu_taiko_SV_Helper.Classes
 
             _hitObjects = _beatmap
                 .Skip(hitObjectsIndex + 1)
-                .Where(line => line != "")
+                .Where(line => !string.IsNullOrWhiteSpace(line))
                 .Select(line =>
                 {
                     string[] objects = line.Split(',');
@@ -87,7 +96,6 @@ namespace osu_taiko_SV_Helper.Classes
                     };
                 })
                 .ToList();
-
 
             foreach (var timing in _timingPoints.Where(timing => timing.Uninherited == 1))
             {

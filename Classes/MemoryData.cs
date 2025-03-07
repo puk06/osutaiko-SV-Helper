@@ -6,6 +6,6 @@
         public string Artist { get; set; }
         public string Version { get; set; }
         public string BackgroundPath { get; set; }
-        public string BeatmapStr { get; set; }
+        public string BeatmapPath { get; set; }
     }
 }
