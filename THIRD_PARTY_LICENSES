@@ -1,5 +1,10 @@
 This software uses the following third-party libraries:
 
+- System.Numerics.Vectors (.NET Runtime)
+  https://github.com/dotnet/runtime
+  Licensed under the MIT License
+  https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+
 - Coosu.Database
   License: MIT License
   License URL: https://github.com/Coosu/Coosu/blob/master/LICENSE
