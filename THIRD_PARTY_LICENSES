@@ -1,0 +1,25 @@
+This software uses the following third-party libraries:
+
+- Coosu.Database
+  License: MIT License
+  License URL: https://github.com/Coosu/Coosu/blob/master/LICENSE
+
+- Octokit
+  License: MIT License
+  License URL: https://github.com/octokit/octokit.net/blob/main/LICENSE.txt
+
+- OsuMemoryDataProvider
+  License: MIT License
+  License URL: https://github.com/Piotrekol/ProcessMemoryDataFinder/blob/master/LICENSE
+
+- OsuParsers
+  License: MIT License
+  License URL: https://github.com/mrflashstudio/OsuParsers/blob/master/LICENSE
+
+- ProcessMemoryDataFinder
+  License: MIT License
+  License URL: https://github.com/Piotrekol/ProcessMemoryDataFinder/blob/master/LICENSE
+
+- System.Numerics.Vectors (v4.6.0)
+  License: MIT License
+  License URL: https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
