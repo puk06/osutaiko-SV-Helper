@@ -1,8 +1,7 @@
-﻿namespace osu_taiko_SV_Helper.Models
+﻿namespace osu_taiko_SV_Helper.Models;
+
+internal class Bpm
 {
-    internal class Bpm
-    {
-        internal double Time { get; set; }
-        internal double Value { get; set; }
-    }
+    internal double Time { get; set; }
+    internal double Value { get; set; }
 }

@@ -1,7 +1,6 @@
-﻿namespace osu_taiko_SV_Helper.Models
+﻿namespace osu_taiko_SV_Helper.Models;
+
+internal class HitObject
 {
-    internal class HitObject
-    {
-        internal int Time { get; set; }
-    }
+    internal int Time { get; set; }
 }

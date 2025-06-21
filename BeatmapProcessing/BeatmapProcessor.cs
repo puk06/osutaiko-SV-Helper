@@ -1,23 +1,18 @@
 ﻿using osu_taiko_SV_Helper.Models;
 using osu_taiko_SV_Helper.Utils;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace osu_taiko_SV_Helper.BeatmapProcessing
 {
     internal class BeatmapProcessor
     {
-        private string _beatmapPath;
-        private BeatmapArgs _args;
-        private string _rawbeatmap;
-        private List<TimingPoint> _timingPoints;
-        private List<HitObject> _hitObjects;
-        private string[] _beatmap;
-        private List<Bpm> _bpmList;
+        private string _beatmapPath = string.Empty;
+        private BeatmapArgs _args = new BeatmapArgs();
+        private string _rawbeatmap = string.Empty;
+        private List<TimingPoint> _timingPoints = new List<TimingPoint>();
+        private List<HitObject> _hitObjects = new List<HitObject>();
+        private string[] _beatmap = Array.Empty<string>();
+        private List<Bpm> _bpmList = new List<Bpm>();
 
         private const string TimingpointsSection = "[TimingPoints]";
         private const string HitobjectsSection = "[HitObjects]";
@@ -146,14 +141,14 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
             {
                 case 0:
                     {
-                        Bpm bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= startTime);
+                        Bpm? bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= startTime);
                         double startBpm = bpmAtStart == null ? 0 : bpmAtStart.Value;
                         double commonSvRatio = (svEnd - svStart) / (endTime - startTime);
                         double commonVolumeRatio = (double)(volumeEnd - volumeStart) / (endTime - startTime);
 
                         foreach (var hitObject in allHitObjects)
                         {
-                            Bpm bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= hitObject.Time);
+                            Bpm? bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= hitObject.Time);
                             double currentBpm = bpmAtCurrent == null ? 0 : bpmAtCurrent.Value;
 
                             if (_args.Offset16) _args.Offset = (int)Math.Round(60000 / currentBpm / 16);
@@ -180,7 +175,11 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
                                                 timingPoint.Time == hitObject.Time - _args.Offset &&
                                                 timingPoint.Uninherited == 0
                                         );
-                                        prevTimingPoint.BeatLength /= svStart + (commonSvRatio * (hitObject.Time - startTime));
+
+                                        if (prevTimingPoint != null)
+                                        {
+                                            prevTimingPoint.BeatLength /= svStart + (commonSvRatio * (hitObject.Time - startTime));
+                                        }
                                         continue;
                                 }
                             }
@@ -210,13 +209,13 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
 
                 case 1:
                     {
-                        Bpm bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= startTime);
+                        Bpm? bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= startTime);
                         double startBpm = bpmAtStart == null ? 0 : bpmAtStart.Value;
                         double commonVolumeRatio = (double)(volumeEnd - volumeStart) / (endTime - startTime);
 
                         foreach (var hitObject in allHitObjects)
                         {
-                            Bpm bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= hitObject.Time);
+                            Bpm? bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= hitObject.Time);
                             double currentBpm = bpmAtCurrent == null ? 0 : bpmAtCurrent.Value;
 
                             if (_args.Offset16) _args.Offset = (int)Math.Round(60000 / currentBpm / 16);
@@ -251,7 +250,11 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
                                         double timeProgress = currentTime - startTime;
 
                                         double interpolatedSv = (svDifference / timeSpan) * timeProgress + (100.0 / svStart);
-                                        prevTimingPoint.BeatLength /= (100.0 / interpolatedSv);
+
+                                        if (prevTimingPoint != null)
+                                        {
+                                            prevTimingPoint.BeatLength /= (100.0 / interpolatedSv);
+                                        }
                                         continue;
                                 }
                             }
@@ -284,7 +287,7 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
 
                 case 2:
                     {
-                        Bpm bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= pointStart);
+                        Bpm? bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= pointStart);
                         double startBpm = bpmAtStart == null ? 0 : bpmAtStart.Value;
                         double interval = 60000 / startBpm / 16;
                         double commonSvRatio = (svEnd - svStart) / (pointStart - pointStart);
@@ -294,7 +297,7 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
                         {
                             if (i > pointStart) break;
 
-                            Bpm bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= i);
+                            Bpm? bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= i);
                             double currentBpm = bpmAtCurrent == null ? 0 : bpmAtCurrent.Value;
 
                             if (_args.Offset16) _args.Offset = (int)Math.Round(60000 / currentBpm / 16);
@@ -317,7 +320,11 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
                                         var prevTimingPoint = _timingPoints.Find(timingPoint =>
                                             timingPoint.Time == (int)Math.Round(i - _args.Offset) &&
                                             timingPoint.Uninherited == 0);
-                                        prevTimingPoint.BeatLength /= svStart + (commonSvRatio * (i - pointStart));
+
+                                        if (prevTimingPoint != null)
+                                        {
+                                            prevTimingPoint.BeatLength /= svStart + (commonSvRatio * (i - pointStart));
+                                        }
                                         continue;
                                 }
                             }

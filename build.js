@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 
-const DATA_FOLDER = "../../DataFiles";
+const DATA_FOLDER = "../../../DataFiles";
 const BackgroundImagePath = path.join("./src", "EmptyBackground.png");
 const ConfigPath = "./Config.cfg";
 
