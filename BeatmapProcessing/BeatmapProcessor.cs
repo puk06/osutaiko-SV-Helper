@@ -1,5 +1,6 @@
 ﻿using osu_taiko_SV_Helper.Models;
 using osu_taiko_SV_Helper.Utils;
+using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace osu_taiko_SV_Helper.BeatmapProcessing;
@@ -139,6 +140,11 @@ internal class BeatmapProcessor
 
         double baseBpm = _args.BaseBpm;
 
+        TimingPoint? lastTimingPoint = _timingPoints
+            .Where(timingPoint => timingPoint.Time <= startTime && timingPoint.Uninherited == 0)
+            .OrderBy(tp => tp.Time)
+            .LastOrDefault();
+
         List<HitObject> allHitObjects = _hitObjects
             .Where(element => element.Time >= _args.Point.start)
             .TakeWhile(element => element.Time <= _args.Point.end)
@@ -196,8 +202,8 @@ internal class BeatmapProcessor
                             Time = hitObject.Time - _args.Offset,
                             BeatLength = -100 / (svStart + (commonSvRatio * (hitObject.Time - startTime))),
                             Meter = 4,
-                            SampleSet = 1,
-                            SampleIndex = 0,
+                            SampleSet = lastTimingPoint == null ? 1 : lastTimingPoint.SampleSet,
+                            SampleIndex = lastTimingPoint == null ? 0 : lastTimingPoint.SampleIndex,
                             Volume = (int)Math.Round(volumeStart + (commonVolumeRatio * (hitObject.Time - startTime))),
                             Uninherited = 0,
                             Effects = _args.IsKiaiMode ? 1 : 0
@@ -273,8 +279,8 @@ internal class BeatmapProcessor
                             Time = hitObject.Time - _args.Offset,
                             BeatLength = beatLength,
                             Meter = 4,
-                            SampleSet = 1,
-                            SampleIndex = 0,
+                            SampleSet = lastTimingPoint == null ? 1 : lastTimingPoint.SampleSet,
+                            SampleIndex = lastTimingPoint == null ? 0 : lastTimingPoint.SampleIndex,
                             Volume = (int)Math.Round(volumeStart + (commonVolumeRatio * (hitObject.Time - startTime))),
                             Uninherited = 0,
                             Effects = _args.IsKiaiMode ? 1 : 0
@@ -340,8 +346,8 @@ internal class BeatmapProcessor
                             Time = (int)Math.Round(i - _args.Offset),
                             BeatLength = -100 / (svStart + (commonSvRatio * (i - pointStart))),
                             Meter = 4,
-                            SampleSet = 1,
-                            SampleIndex = 0,
+                            SampleSet = lastTimingPoint == null ? 1 : lastTimingPoint.SampleSet,
+                            SampleIndex = lastTimingPoint == null ? 0 : lastTimingPoint.SampleIndex,
                             Volume = (int)Math.Round(volumeStart + (commonVolumeRatio * (i - pointStart))),
                             Uninherited = 0,
                             Effects = _args.IsKiaiMode ? 1 : 0
@@ -365,7 +371,7 @@ internal class BeatmapProcessor
         _timingPoints.Sort((a, b) =>
         {
             if (a.Time == b.Time) return a.Uninherited - b.Uninherited;
-            return a.Time.CompareTo(b.Time);
+            return b.Time.CompareTo(a.Time);
         });
 
         return Task.CompletedTask;
