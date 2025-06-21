@@ -1,7 +1,5 @@
-using System;
-using System.Globalization;
-using System.Windows.Forms;
 using osu_taiko_SV_Helper.Forms;
+using System.Globalization;
 
 namespace osu_taiko_SV_Helper
 {

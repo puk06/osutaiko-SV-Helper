@@ -5,8 +5,7 @@ namespace osu_taiko_SV_Helper.Utils;
 
 internal static class GithubUtils
 {
-
-    public static async void GithubUpdateChecker(string currentVersion)
+    internal static async void GithubUpdateChecker(string currentVersion)
     {
         try
         {
@@ -31,7 +30,7 @@ internal static class GithubUtils
         }
     }
 
-    public static async Task<string> GetVersion(string currentVersion)
+    private static async Task<string> GetVersion(string currentVersion)
     {
         try
         {
