@@ -23,6 +23,8 @@ namespace osu_taiko_SV_Helper.Forms
         private readonly StructuredOsuMemoryReader _sreader = new StructuredOsuMemoryReader();
         private readonly OsuBaseAddresses _baseAddresses = new OsuBaseAddresses();
         private readonly MemoryData _memoryData = new MemoryData();
+        private readonly Dictionary<string, string> _configDictionary = new Dictionary<string, string>();
+
         private bool _working;
         private bool _isDirectoryLoaded;
         private int _currentTime;
@@ -33,7 +35,6 @@ namespace osu_taiko_SV_Helper.Forms
         private bool _firstLoad = true;
         private bool _readBeatmapError;
         private string _preBackgroundPath;
-        private readonly Dictionary<string, string> _configDictionary = new Dictionary<string, string>();
 
         public Main()
         {
