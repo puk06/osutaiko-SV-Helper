@@ -11,14 +11,15 @@ using System.Threading.Tasks;
 using OsuMemoryDataProvider;
 using OsuMemoryDataProvider.OsuMemoryModels;
 using OsuParsers.Decoders;
-using osu_taiko_SV_Helper.Classes;
-using static osu_taiko_SV_Helper.Classes.Helper;
+using osu_taiko_SV_Helper.Models;
+using osu_taiko_SV_Helper.Utils;
+using osu_taiko_SV_Helper.BeatmapProcessing;
 
-namespace osu_taiko_SV_Helper
+namespace osu_taiko_SV_Helper.Forms
 {
-    public partial class SvHelper : Form
+    public partial class Main : Form
     {
-        private const string CurrentVersion = "v1.0.1-Release";
+        private const string CurrentVersion = "v1.0.2-Release";
         private readonly StructuredOsuMemoryReader _sreader = new StructuredOsuMemoryReader();
         private readonly OsuBaseAddresses _baseAddresses = new OsuBaseAddresses();
         private readonly MemoryData _memoryData = new MemoryData();
@@ -34,16 +35,15 @@ namespace osu_taiko_SV_Helper
         private string _preBackgroundPath;
         private readonly Dictionary<string, string> _configDictionary = new Dictionary<string, string>();
 
-        public SvHelper()
+        public Main()
         {
             InitializeComponent();
 
             CheckConfig();
-            Thread getMemoryDataThread = new Thread(UpdateMemoryData)
-            {
-                IsBackground = true
-            };
+
+            Thread getMemoryDataThread = new Thread(UpdateMemoryData){ IsBackground = true };
             getMemoryDataThread.Start();
+
             Loop();
         }
 
@@ -53,7 +53,7 @@ namespace osu_taiko_SV_Helper
             {
                 SV_MODE_COMBOBOX.SelectedIndex = 0;
                 MODE_COMBOBOX.SelectedIndex = 0;
-                GithubUpdateChecker(CurrentVersion);
+                GithubUtils.GithubUpdateChecker(CurrentVersion);
                 return;
             }
 
@@ -74,7 +74,8 @@ namespace osu_taiko_SV_Helper
                 var defaultModeResult = int.TryParse(defaultsvmodestring, out int defaultsvmode);
                 if (!defaultModeResult || !(defaultsvmode == 0 || defaultsvmode == 1 || defaultsvmode == 2))
                 {
-                    MessageBox.Show("Config.cfgのDEFAULT_SV_MODEの値が不正であったため、初期値の0が適用されます。0、1、2のどれかを入力してください。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+                    LogUtils.ShowErrorMessage("Config.cfgのDEFAULT_SV_MODEの値が不正であったため、初期値の0が適用されます。0、1、2のどれかを入力してください。");
                 }
                 else
                 {
@@ -88,7 +89,7 @@ namespace osu_taiko_SV_Helper
                 var defaultModeResult = int.TryParse(defaultmodestring, out int defaultmode);
                 if (!defaultModeResult || !(defaultmode == 0 || defaultmode == 1 || defaultmode == 2 || defaultmode == 3))
                 {
-                    MessageBox.Show("Config.cfgのDEFAULT_MODEの値が不正であったため、初期値の0が適用されます。0、1、2、3のどれかを入力してください。", "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    LogUtils.ShowErrorMessage("Config.cfgのDEFAULT_MODEの値が不正であったため、初期値の0が適用されます。0、1、2、3のどれかを入力してください。");
                 }
                 else
                 {
@@ -102,9 +103,8 @@ namespace osu_taiko_SV_Helper
             BPM_COMP_CHECKBOX.Checked = _configDictionary.TryGetValue("BPM_COMPATIBILITY", out string test4) && test4 == "true";
             if (_configDictionary.TryGetValue("UPDATE_CHECK", out string test5) && test5 == "true")
             {
-                GithubUpdateChecker(CurrentVersion);
+                GithubUtils.GithubUpdateChecker(CurrentVersion);
             }
-
         }
 
         private async void Loop()
@@ -112,6 +112,7 @@ namespace osu_taiko_SV_Helper
             while (true)
             {
                 await Task.Delay(15);
+
                 try
                 {
                     if (_memoryError)
@@ -123,11 +124,18 @@ namespace osu_taiko_SV_Helper
                                 control == Background_Picture_Box ||
                                 control == TITLE_LABEL ||
                                 control == ARTIST_LABEL ||
-                                control == VERSION_LABEL) continue;
+                                control == VERSION_LABEL
+                            )
+                            {
+                                continue;
+                            }
+
                             control.Enabled = false;
-                            WORK_STATUS_TEXT.Text = _readBeatmapError ? "Beatmap Error Occurred" : "Memory Error Occurred";
-                            WORK_STATUS_TEXT.ForeColor = Color.Red;
                         }
+
+                        WORK_STATUS_TEXT.Text = _readBeatmapError ? "Beatmap Error Occurred" : "Memory Error Occurred";
+                        WORK_STATUS_TEXT.ForeColor = Color.Red;
+
                         continue;
                     }
 
@@ -140,6 +148,7 @@ namespace osu_taiko_SV_Helper
                             OFFSET_TEXTBOX.Enabled = false;
                             continue;
                         }
+
                         control.Enabled = true;
                     }
 
@@ -172,12 +181,19 @@ namespace osu_taiko_SV_Helper
                     VERSION_LABEL.Location = new Point(390 - VERSION_LABEL.Width, 2);
 
                     if (_preBackgroundPath == _memoryData.BackgroundPath) continue;
-                    Background_Picture_Box.Image = GetBackgroundImage(_memoryData.BackgroundPath);
+
+                    if (Background_Picture_Box.Image != null)
+                    {
+                        Background_Picture_Box.Image.Dispose();
+                        Background_Picture_Box.Image = null;
+                    }
+
+                    Background_Picture_Box.Image = FileUtils.GetBackgroundImage(_memoryData.BackgroundPath);
                     _preBackgroundPath = _memoryData.BackgroundPath;
                 }
                 catch (Exception error)
                 {
-                    DebugLogger(error.Message);
+                    LogUtils.DebugLogger(error.Message);
                     foreach (Control control in Controls)
                     {
                         if (control == WORK_STATUS_TEXT ||
@@ -187,9 +203,10 @@ namespace osu_taiko_SV_Helper
                             control == ARTIST_LABEL ||
                             control == VERSION_LABEL) continue;
                         control.Enabled = false;
-                        WORK_STATUS_TEXT.Text = "Error Occurred";
-                        WORK_STATUS_TEXT.ForeColor = Color.Red;
                     }
+
+                    WORK_STATUS_TEXT.Text = "Error Occurred";
+                    WORK_STATUS_TEXT.ForeColor = Color.Red;
                 }
             }
         }
@@ -201,22 +218,23 @@ namespace osu_taiko_SV_Helper
                 try
                 {
                     Thread.Sleep(15);
+
                     if (Process.GetProcessesByName("osu!").Length == 0) throw new Exception("osu! is not running.");
                     if (!_isDirectoryLoaded)
                     {
                         Process osuProcess = Process.GetProcessesByName("osu!")[0];
                         string tempOsuDirectory = Path.GetDirectoryName(osuProcess.MainModule.FileName);
-                        DebugLogger($"osu! directory: {tempOsuDirectory}");
+                        LogUtils.DebugLogger($"osu! directory: {tempOsuDirectory}");
                         if (string.IsNullOrEmpty(tempOsuDirectory) || !Directory.Exists(tempOsuDirectory))
                             throw new Exception("osu! directory not found.");
 
                         _osuDirectory = tempOsuDirectory;
-                        _songsPath = GetSongsFolderLocation(_osuDirectory);
+                        _songsPath = FileUtils.GetSongsFolderLocation(_osuDirectory);
                         _isDirectoryLoaded = true;
-                        DebugLogger($"Songs folder: {_songsPath}");
-                        DebugLogger("Directory Data initialized.");
+                        LogUtils.DebugLogger($"Songs folder: {_songsPath}");
+                        LogUtils.DebugLogger("Directory Data initialized.");
 
-                        _songsPath = GetSongsFolderLocation(_osuDirectory);
+                        _songsPath = FileUtils.GetSongsFolderLocation(_osuDirectory);
                         _isDirectoryLoaded = true;
                     }
 
@@ -242,31 +260,31 @@ namespace osu_taiko_SV_Helper
 
                     _memoryData.BeatmapPath = osuBeatmapPath;
                     _currentBeatmapPath = osuBeatmapPath;
-                    DebugLogger("Map change detected.");
-                    DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+                    LogUtils.DebugLogger("Map change detected.");
+                    LogUtils.DebugLogger($"Current beatmap path: {osuBeatmapPath}");
 
                     if (!File.Exists(osuBeatmapPath))
                     {
                         // Fix the beatmap path(idk why)
-                        DebugLogger("Beatmap file not found. Trying to fix the path... (Attempting 1)");
+                        LogUtils.DebugLogger("Beatmap file not found. Trying to fix the path... (Attempting 1)");
                         osuBeatmapPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName?.Trim() ?? "", _baseAddresses.Beatmap.OsuFileName ?? "");
-                        DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+                        LogUtils.DebugLogger($"Current beatmap path: {osuBeatmapPath}");
 
                         if (!File.Exists(osuBeatmapPath))
                         {
-                            DebugLogger("Beatmap file not found. Trying to fix the path again... (Attempting 2)");
+                            LogUtils.DebugLogger("Beatmap file not found. Trying to fix the path again... (Attempting 2)");
                             osuBeatmapPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName ?? "", _baseAddresses.Beatmap.OsuFileName?.Trim() ?? "");
-                            DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+                            LogUtils.DebugLogger($"Current beatmap path: {osuBeatmapPath}");
                         }
 
                         if (!File.Exists(osuBeatmapPath))
                         {
-                            DebugLogger("Beatmap file not found. Trying to fix the path again... (Attempting 3)");
+                            LogUtils.DebugLogger("Beatmap file not found. Trying to fix the path again... (Attempting 3)");
                             osuBeatmapPath = Path.Combine(_songsPath ?? "", _baseAddresses.Beatmap.FolderName?.Trim() ?? "", _baseAddresses.Beatmap.OsuFileName.Trim() ?? "");
-                            DebugLogger($"Current beatmap path: {osuBeatmapPath}");
+                            LogUtils.DebugLogger($"Current beatmap path: {osuBeatmapPath}");
                         }
 
-                        if (File.Exists(osuBeatmapPath)) DebugLogger("Beatmap file found.");
+                        if (File.Exists(osuBeatmapPath)) LogUtils.DebugLogger("Beatmap file found.");
                     }
 
                     if (!File.Exists(osuBeatmapPath))
@@ -296,7 +314,7 @@ namespace osu_taiko_SV_Helper
                 }
                 catch (Exception error)
                 {
-                    DebugLogger(error.Message);
+                    LogUtils.DebugLogger(error.Message);
                     _memoryError = true;
                 }
             }
@@ -310,43 +328,50 @@ namespace osu_taiko_SV_Helper
             var reasons = ValueChecker();
             if (reasons.Any())
             {
-                ShowErrorMessage("Failed to apply SV. The reasons are as follows.\n" + string.Join("\n", reasons));
+                LogUtils.ShowErrorMessage("Failed to apply SV. The reasons are as follows.\n" + string.Join("\n", reasons));
                 return;
             }
 
-            BeatmapArgs args = new BeatmapArgs
-            {
-                Point = new List<int> { int.Parse(SV_STARTTIME_TEXTBOX.Text), int.Parse(SV_ENDTIME_TEXTBOX.Text) },
-                Sv = new List<double> { double.Parse(SV_START_TEXTBOX.Text), double.Parse(SV_END_TEXTBOX.Text) },
-                Volume = new List<int> { int.Parse(VOLUME_START_TEXTBOX.Text), int.Parse(VOLUME_END_TEXTBOX.Text) },
-                IsKiaiMode = KIAI_MODE_CHECKBOX.Checked,
-                SvMode = SV_MODE_COMBOBOX.SelectedIndex,
-                Offset = int.Parse(OFFSET_TEXTBOX.Text),
-                Mode = MODE_COMBOBOX.SelectedIndex,
-                Offset16 = OFFSET_CHECKBOX16.Checked,
-                Offset12 = OFFSET_CHECKBOX12.Checked,
-                BpmCompatibility = BPM_COMP_CHECKBOX.Checked,
-                BaseBpm = string.IsNullOrEmpty(BASE_BPM_TEXTBOX.Text) || !USE_CUSTOM_BPM_CHECKBOX.Checked || BASE_BPM_TEXTBOX.Text == "0" ? 0 : double.Parse(BASE_BPM_TEXTBOX.Text)
-            };
-
             try
             {
+                BeatmapArgs args = new BeatmapArgs
+                {
+                    Point = (MathUtils.IntParse(SV_STARTTIME_TEXTBOX.Text), MathUtils.IntParse(SV_ENDTIME_TEXTBOX.Text)),
+                    Sv = (MathUtils.DoubleParse(SV_START_TEXTBOX.Text), MathUtils.DoubleParse(SV_END_TEXTBOX.Text)),
+                    Volume = (MathUtils.IntParse(VOLUME_START_TEXTBOX.Text), MathUtils.IntParse(VOLUME_END_TEXTBOX.Text)),
+                    IsKiaiMode = KIAI_MODE_CHECKBOX.Checked,
+                    SvMode = SV_MODE_COMBOBOX.SelectedIndex,
+                    Offset = MathUtils.IntParse(OFFSET_TEXTBOX.Text),
+                    Mode = MODE_COMBOBOX.SelectedIndex,
+                    Offset16 = OFFSET_CHECKBOX16.Checked,
+                    Offset12 = OFFSET_CHECKBOX12.Checked,
+                    BpmCompatibility = BPM_COMP_CHECKBOX.Checked,
+                    BaseBpm = string.IsNullOrEmpty(BASE_BPM_TEXTBOX.Text) || !USE_CUSTOM_BPM_CHECKBOX.Checked || BASE_BPM_TEXTBOX.Text == "0" ? 0 : MathUtils.DoubleParse(BASE_BPM_TEXTBOX.Text)
+                };
+
                 _working = true;
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
+
                 WORK_STATUS_TEXT.Text = "Making...";
                 WORK_STATUS_TEXT.ForeColor = Color.LimeGreen;
-                Beatmap beatmap = new Beatmap();
+
+                BeatmapProcessor beatmapProcessor = new BeatmapProcessor();
                 WORK_STATUS_TEXT.Text = "Preparing...";
-                await beatmap.BeatmapParser(_currentBeatmapPath, args);
+                await beatmapProcessor.BeatmapParser(_currentBeatmapPath, args);
+
                 WORK_STATUS_TEXT.Text = "Backing up Beatmaps...";
-                await beatmap.Backup();
+                await beatmapProcessor.Backup();
+
                 WORK_STATUS_TEXT.Text = "Parsing Beatmaps...";
-                await beatmap.Parse();
+                await beatmapProcessor.Parse();
+
                 WORK_STATUS_TEXT.Text = "Making Beatmaps...";
-                await beatmap.Make();
-                await beatmap.Output();
+                await beatmapProcessor.Make();
+                await beatmapProcessor.Output();
+
                 sw.Stop();
+
                 WORK_STATUS_TEXT.Text = $"SV Applied! ({sw.ElapsedMilliseconds}ms)";
                 System.Media.SystemSounds.Asterisk.Play();
                 await Task.Delay(3000);
@@ -354,8 +379,10 @@ namespace osu_taiko_SV_Helper
             }
             catch (Exception error)
             {
-                DebugLogger(error.Message);
+                LogUtils.DebugLogger(error.Message);
+                LogUtils.ShowErrorMessage(error.Message);
                 WORK_STATUS_TEXT.Text = "Error Occurred";
+
                 WORK_STATUS_TEXT.ForeColor = Color.Red;
                 System.Media.SystemSounds.Hand.Play();
                 await Task.Delay(3000);
@@ -371,96 +398,103 @@ namespace osu_taiko_SV_Helper
         private IEnumerable<string> ValueChecker()
         {
             IEnumerable<string> reasons = Array.Empty<string>();
+            const string TimeFormat = "^\\d+:\\d+:\\d+.+$";
 
-            if (Regex.IsMatch(SV_STARTTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
+            if (Regex.IsMatch(SV_STARTTIME_TEXTBOX.Text, TimeFormat))
             {
                 string[] time = Regex.Replace(SV_STARTTIME_TEXTBOX.Text, "[^0-9:]", "").Split(':');
                 if (!int.TryParse(time[0], out _) || !int.TryParse(time[1], out _) || !int.TryParse(time[2], out _))
                 {
-                    AddValueToArray(ref reasons, "❌️ 開始時間の入力形式が間違っています。");
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始時間の入力形式が間違っています。");
                 }
 
-                int minute = int.Parse(time[0]);
-                int second = int.Parse(time[1]);
-                int millisecond = int.Parse(time[2]);
+                int minute = MathUtils.IntParse(time[0]);
+                int second = MathUtils.IntParse(time[1]);
+                int millisecond = MathUtils.IntParse(time[2]);
                 int totalMillisecond = (minute * 60000) + (second * 1000) + millisecond;
                 SV_STARTTIME_TEXTBOX.Text = totalMillisecond.ToString();
             }
 
-            if (Regex.IsMatch(SV_ENDTIME_TEXTBOX.Text, "^\\d+:\\d+:\\d+.+$"))
+            if (Regex.IsMatch(SV_ENDTIME_TEXTBOX.Text, TimeFormat))
             {
                 string[] time = Regex.Replace(SV_ENDTIME_TEXTBOX.Text, "[^0-9:]", "").Split(':');
                 if (!int.TryParse(time[0], out _) || !int.TryParse(time[1], out _) || !int.TryParse(time[2], out _))
                 {
-                    AddValueToArray(ref reasons, "❌️ 終了時間の入力形式が間違っています。");
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 終了時間の入力形式が間違っています。");
                 }
 
-                int minute = int.Parse(time[0]);
-                int second = int.Parse(time[1]);
-                int millisecond = int.Parse(time[2]);
+                int minute = MathUtils.IntParse(time[0]);
+                int second = MathUtils.IntParse(time[1]);
+                int millisecond = MathUtils.IntParse(time[2]);
                 int totalMillisecond = (minute * 60000) + (second * 1000) + millisecond;
                 SV_ENDTIME_TEXTBOX.Text = totalMillisecond.ToString();
             }
 
             if (string.IsNullOrEmpty(SV_STARTTIME_TEXTBOX.Text) || string.IsNullOrEmpty(SV_ENDTIME_TEXTBOX.Text))
             {
-                AddValueToArray(ref reasons, "❌️ 開始時間と終了時間を入力してください。");
-            }
-
-            if (!int.TryParse(SV_STARTTIME_TEXTBOX.Text, out _) || !int.TryParse(SV_ENDTIME_TEXTBOX.Text, out _))
+                ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始時間と終了時間を入力してください。");
+            } 
+            else
             {
-                AddValueToArray(ref reasons, "❌️ 開始時間か終了時間の入力形式が間違っています。");
-            }
+                if (!int.TryParse(SV_STARTTIME_TEXTBOX.Text, out _) || !int.TryParse(SV_ENDTIME_TEXTBOX.Text, out _))
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始時間か終了時間の入力形式が間違っています。");
+                }
 
-            if (int.Parse(SV_ENDTIME_TEXTBOX.Text) <= int.Parse(SV_STARTTIME_TEXTBOX.Text))
-            {
-                AddValueToArray(ref reasons, "❌️ 終了時間を開始時間と同じ、もしくはより早くすることはできません。");
-            }
+                if (MathUtils.IntParse(SV_ENDTIME_TEXTBOX.Text) <= MathUtils.IntParse(SV_STARTTIME_TEXTBOX.Text))
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 終了時間を開始時間と同じ、もしくはより早くすることはできません。");
+                }
 
-            if (int.Parse(SV_STARTTIME_TEXTBOX.Text) < 0 || int.Parse(SV_ENDTIME_TEXTBOX.Text) < 0)
-            {
-                AddValueToArray(ref reasons, "❌️ 時間に負の値を入力することはできません。");
-            }
+                if (MathUtils.IntParse(SV_STARTTIME_TEXTBOX.Text) < 0 || MathUtils.IntParse(SV_ENDTIME_TEXTBOX.Text) < 0)
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 時間に負の値を入力することはできません。");
+                }
 
-            if (SV_STARTTIME_TEXTBOX.Text == "0" && SV_ENDTIME_TEXTBOX.Text == "0")
-            {
-                AddValueToArray(ref reasons, "❌️ 開始時間と終了時間に同時に0を入力することはできません。");
+                if (SV_STARTTIME_TEXTBOX.Text == "0" && SV_ENDTIME_TEXTBOX.Text == "0")
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始時間と終了時間に同時に0を入力することはできません。");
+                }
             }
 
             if (string.IsNullOrEmpty(SV_START_TEXTBOX.Text) || string.IsNullOrEmpty(SV_END_TEXTBOX.Text))
             {
-                AddValueToArray(ref reasons, "❌️ 開始SVと終了SVを入力してください。");
-            }
-
-            if (!double.TryParse(SV_START_TEXTBOX.Text, out _) || !double.TryParse(SV_END_TEXTBOX.Text, out _))
+                ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始SVと終了SVを入力してください。");
+            } 
+            else
             {
-                AddValueToArray(ref reasons, "❌️ 開始SVか終了SVの入力形式が間違っています。");
-            }
+                if (!double.TryParse(SV_START_TEXTBOX.Text, out _) || !double.TryParse(SV_END_TEXTBOX.Text, out _))
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始SVか終了SVの入力形式が間違っています。");
+                }
 
-            if (SV_START_TEXTBOX.Text == "0" || SV_END_TEXTBOX.Text == "0")
-            {
-                AddValueToArray(ref reasons, "❌️ 開始SVと終了SVに0を入力することはできません。");
-            }
+                if (SV_START_TEXTBOX.Text == "0" || SV_END_TEXTBOX.Text == "0")
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始SVと終了SVに0を入力することはできません。");
+                }
 
-            if (double.Parse(SV_START_TEXTBOX.Text) < 0 || double.Parse(SV_END_TEXTBOX.Text) < 0)
-            {
-                AddValueToArray(ref reasons, "❌️ SVに負の値を入力することはできません。");
+                if (MathUtils.DoubleParse(SV_START_TEXTBOX.Text) < 0 || MathUtils.DoubleParse(SV_END_TEXTBOX.Text) < 0)
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ SVに負の値を入力することはできません。");
+                }
             }
 
             if (string.IsNullOrEmpty(VOLUME_START_TEXTBOX.Text) || string.IsNullOrEmpty(VOLUME_END_TEXTBOX.Text))
             {
-                AddValueToArray(ref reasons, "❌️ 開始ボリュームと終了ボリュームを入力してください。");
+                ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始ボリュームと終了ボリュームを入力してください。");
             }
-
-            if (!int.TryParse(VOLUME_START_TEXTBOX.Text, out _) || !int.TryParse(VOLUME_END_TEXTBOX.Text, out _))
+            else
             {
-                AddValueToArray(ref reasons, "❌️ 開始ボリュームか終了ボリュームの入力形式が間違っています。");
-            }
+                if (!int.TryParse(VOLUME_START_TEXTBOX.Text, out _) || !int.TryParse(VOLUME_END_TEXTBOX.Text, out _))
+                {
+                    ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始ボリュームか終了ボリュームの入力形式が間違っています。");
+                }
 
-            if (int.Parse(VOLUME_START_TEXTBOX.Text) > 100) VOLUME_START_TEXTBOX.Text = "100";
-            if (int.Parse(VOLUME_END_TEXTBOX.Text) > 100) VOLUME_END_TEXTBOX.Text = "100";
-            if (int.Parse(VOLUME_START_TEXTBOX.Text) < 0) VOLUME_START_TEXTBOX.Text = "1";
-            if (int.Parse(VOLUME_END_TEXTBOX.Text) < 0) VOLUME_END_TEXTBOX.Text = "1";
+                if (MathUtils.IntParse(VOLUME_START_TEXTBOX.Text) > 100) VOLUME_START_TEXTBOX.Text = "100";
+                if (MathUtils.IntParse(VOLUME_END_TEXTBOX.Text) > 100) VOLUME_END_TEXTBOX.Text = "100";
+                if (MathUtils.IntParse(VOLUME_START_TEXTBOX.Text) < 0) VOLUME_START_TEXTBOX.Text = "1";
+                if (MathUtils.IntParse(VOLUME_END_TEXTBOX.Text) < 0) VOLUME_END_TEXTBOX.Text = "1";
+            }
 
             if (int.TryParse(OFFSET_TEXTBOX.Text, out int offset))
             {
@@ -469,7 +503,7 @@ namespace osu_taiko_SV_Helper
             else
             {
                 OFFSET_TEXTBOX.Text = "0";
-                AddValueToArray(ref reasons, "❌️ オフセットの入力形式が間違っています。");
+                ArrayUtils.AddValueToArray(ref reasons, "❌️ オフセットの入力形式が間違っています。");
             }
 
             if (!USE_CUSTOM_BPM_CHECKBOX.Checked) return reasons;
@@ -478,18 +512,20 @@ namespace osu_taiko_SV_Helper
             {
                 BASE_BPM_TEXTBOX.Text = "";
             }
-            else if (double.Parse(BASE_BPM_TEXTBOX.Text) <= 0)
+            else if (MathUtils.DoubleParse(BASE_BPM_TEXTBOX.Text) <= 0)
             {
                 BASE_BPM_TEXTBOX.Text = "";
-                AddValueToArray(ref reasons, "❌️ ベースBPMに0以下の値を入力することはできません。");
+                ArrayUtils.AddValueToArray(ref reasons, "❌️ ベースBPMに0以下の値を入力することはできません。");
             }
 
             return reasons;
         }
 
-        private void SET_START_TIME_BUTTON_Click(object sender, EventArgs e) => SV_STARTTIME_TEXTBOX.Text = _currentTime.ToString();
+        private void SET_START_TIME_BUTTON_Click(object sender, EventArgs e)
+            => SV_STARTTIME_TEXTBOX.Text = _currentTime.ToString();
 
-        private void SET_END_TIME_BUTTON_Click(object sender, EventArgs e) => SV_ENDTIME_TEXTBOX.Text = _currentTime.ToString();
+        private void SET_END_TIME_BUTTON_Click(object sender, EventArgs e) 
+            => SV_ENDTIME_TEXTBOX.Text = _currentTime.ToString();
 
         private void RESET_BUTTON_Click(object sender, EventArgs e)
         {
@@ -509,6 +545,7 @@ namespace osu_taiko_SV_Helper
         {
             MAKE_BUTTON.Enabled = false;
             UNDO_BUTTON.Enabled = false;
+
             string backupPath = Path.Combine("Backups", Path.GetFileNameWithoutExtension(_currentBeatmapPath));
             if (Directory.Exists(backupPath))
             {
@@ -519,7 +556,7 @@ namespace osu_taiko_SV_Helper
                     sw.Start();
                     WORK_STATUS_TEXT.Text = "Restoring...";
                     string[] files = Directory.GetFiles(backupPath);
-                    string latestBackup = FindLatestFile(files);
+                    string latestBackup = FileUtils.FindLatestFile(files);
                     if (string.IsNullOrEmpty(latestBackup))
                     {
                         sw.Stop();
@@ -541,7 +578,7 @@ namespace osu_taiko_SV_Helper
                 }
                 catch (Exception error)
                 {
-                    DebugLogger(error.Message);
+                    LogUtils.DebugLogger(error.Message);
                     WORK_STATUS_TEXT.Text = "Error Occurred";
                     WORK_STATUS_TEXT.ForeColor = Color.Red;
                     System.Media.SystemSounds.Hand.Play();

@@ -2,9 +2,9 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace osu_taiko_SV_Helper
+namespace osu_taiko_SV_Helper.Forms
 {
-    partial class SvHelper
+    partial class Main
     {
         /// <summary>
         /// 必要なデザイナー変数です。
@@ -32,7 +32,7 @@ namespace osu_taiko_SV_Helper
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SvHelper));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Main));
             this.Background_Picture_Box = new System.Windows.Forms.PictureBox();
             this.VERSION_LABEL = new System.Windows.Forms.Label();
             this.ARTIST_LABEL = new System.Windows.Forms.Label();

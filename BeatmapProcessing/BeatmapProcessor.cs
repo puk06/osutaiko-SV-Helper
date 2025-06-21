@@ -1,3 +1,5 @@
+﻿using osu_taiko_SV_Helper.Models;
+using osu_taiko_SV_Helper.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -5,9 +7,9 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace osu_taiko_SV_Helper.Classes
+namespace osu_taiko_SV_Helper.BeatmapProcessing
 {
-    internal class Beatmap
+    internal class BeatmapProcessor
     {
         private string _beatmapPath;
         private BeatmapArgs _args;
@@ -19,17 +21,19 @@ namespace osu_taiko_SV_Helper.Classes
 
         private const string TimingpointsSection = "[TimingPoints]";
         private const string HitobjectsSection = "[HitObjects]";
-        private string[] NewLine = { Environment.NewLine };
+        private readonly string[] NewLine = { Environment.NewLine };
 
         public Task BeatmapParser(string beatmapPath, BeatmapArgs args)
         {
             if (!File.Exists(beatmapPath)) throw new FileNotFoundException("Beatmap file not found.");
+
             _beatmapPath = beatmapPath;
             _args = args;
             _rawbeatmap = File.ReadAllText(_beatmapPath);
             _timingPoints = new List<TimingPoint>();
             _hitObjects = new List<HitObject>();
             _bpmList = new List<Bpm>();
+
             return Task.CompletedTask;
         }
 
@@ -72,14 +76,14 @@ namespace osu_taiko_SV_Helper.Classes
                     string[] objects = line.Split(',');
                     return new TimingPoint
                     {
-                        Time = double.Parse(objects[0]),
-                        BeatLength = double.Parse(objects[1]),
-                        Meter = int.Parse(objects[2]),
-                        SampleSet = int.Parse(objects[3]),
-                        SampleIndex = int.Parse(objects[4]),
-                        Volume = int.Parse(objects[5]),
-                        Uninherited = int.Parse(objects[6]),
-                        Effects = int.Parse(objects[7])
+                        Time = MathUtils.DoubleParse(objects[0]),
+                        BeatLength = MathUtils.DoubleParse(objects[1]),
+                        Meter = MathUtils.IntParse(objects[2]),
+                        SampleSet = MathUtils.IntParse(objects[3]),
+                        SampleIndex = MathUtils.IntParse(objects[4]),
+                        Volume = MathUtils.IntParse(objects[5]),
+                        Uninherited = MathUtils.IntParse(objects[6]),
+                        Effects = MathUtils.IntParse(objects[7])
                     };
                 })
                 .ToList();
@@ -92,7 +96,7 @@ namespace osu_taiko_SV_Helper.Classes
                     string[] objects = line.Split(',');
                     return new HitObject
                     {
-                        Time = int.Parse(objects[2])
+                        Time = MathUtils.IntParse(objects[2])
                     };
                 })
                 .ToList();
@@ -111,66 +115,91 @@ namespace osu_taiko_SV_Helper.Classes
 
         public Task Make()
         {
+            List<int> hitObjectsTime = _hitObjects
+                .Where(element => element.Time >= _args.Point.start)
+                .TakeWhile(element => element.Time <= _args.Point.end)
+                .Select(element => element.Time)
+                .ToList();
+
+            if (hitObjectsTime.Count < 2) throw new Exception("HitObjects count is less than 2.");
+
+            int startTime = hitObjectsTime.First();
+            int endTime = hitObjectsTime.Last();
+
+            int pointStart = _args.Point.start;
+            int pointEnd = _args.Point.end;
+
+            double svStart = _args.Sv.start;
+            double svEnd = _args.Sv.end;
+
+            int volumeStart = _args.Volume.start;
+            int volumeEnd = _args.Volume.end;
+
+            double baseBpm = _args.BaseBpm;
+
+            List<HitObject> allHitObjects = _hitObjects
+                .Where(element => element.Time >= _args.Point.start)
+                .TakeWhile(element => element.Time <= _args.Point.end)
+                .ToList();
+
             switch (_args.SvMode)
             {
                 case 0:
                     {
-                        var hitObjectsTime = _hitObjects.Where(element => element.Time >= _args.Point[0])
-                            .TakeWhile(element => element.Time <= _args.Point[1]).Select(element => element.Time).ToList();
-                        if (hitObjectsTime.Count < 2) throw new Exception("HitObjects count is less than 2.");
-                        hitObjectsTime = new List<int> { hitObjectsTime[0], hitObjectsTime[hitObjectsTime.Count - 1] };
+                        Bpm bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= startTime);
+                        double startBpm = bpmAtStart == null ? 0 : bpmAtStart.Value;
+                        double commonSvRatio = (svEnd - svStart) / (endTime - startTime);
+                        double commonVolumeRatio = (double)(volumeEnd - volumeStart) / (endTime - startTime);
 
-                        double baseBpm = _args.BaseBpm;
-                        double startBpm = _bpmList.Last(bpm => bpm.Time <= hitObjectsTime[0]).Value;
-                        double commonSvRatio = (_args.Sv[1] - _args.Sv[0]) / (hitObjectsTime[1] - hitObjectsTime[0]);
-                        double commonVolumeRatio = (double)(_args.Volume[1] - _args.Volume[0]) /
-                                                   (hitObjectsTime[1] - hitObjectsTime[0]);
-
-                        foreach (var element in _hitObjects.Where(element => element.Time >= _args.Point[0])
-                                     .TakeWhile(element => element.Time <= _args.Point[1]))
+                        foreach (var hitObject in allHitObjects)
                         {
-                            double currentBpm = _bpmList.Last(bpm => bpm.Time <= element.Time).Value;
+                            Bpm bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= hitObject.Time);
+                            double currentBpm = bpmAtCurrent == null ? 0 : bpmAtCurrent.Value;
+
                             if (_args.Offset16) _args.Offset = (int)Math.Round(60000 / currentBpm / 16);
                             if (_args.Offset12) _args.Offset = (int)Math.Round(60000 / currentBpm / 12);
-                            if (_timingPoints.Any(timingPoint =>
-                                    timingPoint.Time == element.Time - _args.Offset && timingPoint.Uninherited == 0))
+
+                            if (_timingPoints.Any(timingPoint => timingPoint.Time == hitObject.Time - _args.Offset && timingPoint.Uninherited == 0))
                             {
                                 switch (_args.Mode)
                                 {
                                     case 0:
-                                        _timingPoints.RemoveAll(timingPoint =>
-                                            timingPoint.Time == element.Time - _args.Offset &&
-                                            timingPoint.Uninherited == 0);
+                                        _timingPoints.RemoveAll
+                                        (
+                                            timingPoint =>
+                                                timingPoint.Time == hitObject.Time - _args.Offset &&
+                                                timingPoint.Uninherited == 0
+                                        );
                                         break;
                                     case 2:
                                         continue;
                                     case 3:
-                                        var prevTimingPoint = _timingPoints.Find(timingPoint =>
-                                            timingPoint.Time == element.Time - _args.Offset &&
-                                            timingPoint.Uninherited == 0);
-                                        prevTimingPoint.BeatLength /=
-                                            _args.Sv[0] + (commonSvRatio * (element.Time - hitObjectsTime[0]));
+                                        var prevTimingPoint = _timingPoints.Find
+                                        (
+                                            timingPoint =>
+                                                timingPoint.Time == hitObject.Time - _args.Offset &&
+                                                timingPoint.Uninherited == 0
+                                        );
+                                        prevTimingPoint.BeatLength /= svStart + (commonSvRatio * (hitObject.Time - startTime));
                                         continue;
                                 }
                             }
 
                             TimingPoint currentTimingPoint = new TimingPoint
                             {
-                                Time = element.Time - _args.Offset,
-                                BeatLength = -100 / (_args.Sv[0] + (commonSvRatio * (element.Time - hitObjectsTime[0]))),
+                                Time = hitObject.Time - _args.Offset,
+                                BeatLength = -100 / (svStart + (commonSvRatio * (hitObject.Time - startTime))),
                                 Meter = 4,
                                 SampleSet = 1,
                                 SampleIndex = 0,
-                                Volume = (int)Math.Round(_args.Volume[0] +
-                                                         (commonVolumeRatio * (element.Time - hitObjectsTime[0]))),
+                                Volume = (int)Math.Round(volumeStart + (commonVolumeRatio * (hitObject.Time - startTime))),
                                 Uninherited = 0,
                                 Effects = _args.IsKiaiMode ? 1 : 0
                             };
 
                             if (_args.BpmCompatibility && (int)Math.Round(startBpm) != (int)Math.Round(currentBpm))
                             {
-                                currentTimingPoint.BeatLength *=
-                                    baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
+                                currentTimingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
                             }
 
                             _timingPoints.Add(currentTimingPoint);
@@ -181,59 +210,62 @@ namespace osu_taiko_SV_Helper.Classes
 
                 case 1:
                     {
-                        var hitObjectsTime = _hitObjects.Where(element => element.Time >= _args.Point[0])
-                            .TakeWhile(element => element.Time <= _args.Point[1]).Select(element => element.Time).ToList();
-                        if (hitObjectsTime.Count < 2) throw new Exception("HitObjects count is less than 2.");
-                        hitObjectsTime = new List<int> { hitObjectsTime[0], hitObjectsTime[hitObjectsTime.Count - 1] };
+                        Bpm bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= startTime);
+                        double startBpm = bpmAtStart == null ? 0 : bpmAtStart.Value;
+                        double commonVolumeRatio = (double)(volumeEnd - volumeStart) / (endTime - startTime);
 
-                        double baseBpm = _args.BaseBpm;
-                        double startBpm = _bpmList.Last(bpm => bpm.Time <= hitObjectsTime[0]).Value;
-                        double commonVolumeRatio = (double)(_args.Volume[1] - _args.Volume[0]) /
-                                                   (hitObjectsTime[1] - hitObjectsTime[0]);
-
-                        foreach (var element in _hitObjects.Where(element => element.Time >= _args.Point[0])
-                                     .TakeWhile(element => element.Time <= _args.Point[1]))
+                        foreach (var hitObject in allHitObjects)
                         {
-                            double currentBpm = _bpmList.Last(bpm => bpm.Time <= element.Time).Value;
+                            Bpm bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= hitObject.Time);
+                            double currentBpm = bpmAtCurrent == null ? 0 : bpmAtCurrent.Value;
+
                             if (_args.Offset16) _args.Offset = (int)Math.Round(60000 / currentBpm / 16);
                             if (_args.Offset12) _args.Offset = (int)Math.Round(60000 / currentBpm / 12);
-                            if (_timingPoints.Any(timingPoint =>
-                                    timingPoint.Time == element.Time - _args.Offset && timingPoint.Uninherited == 0))
+
+                            if (_timingPoints.Any(timingPoint => timingPoint.Time == hitObject.Time - _args.Offset && timingPoint.Uninherited == 0))
                             {
                                 switch (_args.Mode)
                                 {
                                     case 0:
-                                        _timingPoints.RemoveAll(timingPoint =>
-                                            timingPoint.Time == element.Time - _args.Offset &&
-                                            timingPoint.Uninherited == 0);
+                                        _timingPoints.RemoveAll
+                                        (
+                                            timingPoint =>
+                                                timingPoint.Time == hitObject.Time - _args.Offset &&
+                                                timingPoint.Uninherited == 0
+                                        );
                                         break;
                                     case 2:
                                         continue;
                                     case 3:
-                                        var prevTimingPoint = _timingPoints.Find(timingPoint =>
-                                            timingPoint.Time == element.Time - _args.Offset &&
-                                            timingPoint.Uninherited == 0);
-                                        prevTimingPoint.BeatLength /= 100 /
-                                                                      ((((100 / _args.Sv[1]) - (100 / _args.Sv[0])) /
-                                                                        (hitObjectsTime[1] - hitObjectsTime[0]) *
-                                                                        (element.Time - hitObjectsTime[0])) +
-                                                                       (100 / _args.Sv[0]));
+                                        var prevTimingPoint = _timingPoints.Find
+                                        (
+                                            timingPoint =>
+                                                timingPoint.Time == hitObject.Time - _args.Offset &&
+                                                timingPoint.Uninherited == 0
+                                        );
+
+                                        double currentTime = hitObject.Time;
+
+                                        double svDifference = (100.0 / svEnd) - (100.0 / svStart);
+                                        double timeSpan = endTime - startTime;
+                                        double timeProgress = currentTime - startTime;
+
+                                        double interpolatedSv = (svDifference / timeSpan) * timeProgress + (100.0 / svStart);
+                                        prevTimingPoint.BeatLength /= (100.0 / interpolatedSv);
                                         continue;
                                 }
                             }
 
+                            double beatLength = -100 / (100 / ((((100 / svEnd) - (100 / svStart)) / (endTime - startTime) * (hitObject.Time - startTime)) + (100 / svStart)));
+
                             TimingPoint currentTimingPoint = new TimingPoint
                             {
-                                Time = element.Time - _args.Offset,
-                                BeatLength = -100 / (100 /
-                                                     ((((100 / _args.Sv[1]) - (100 / _args.Sv[0])) /
-                                                       (hitObjectsTime[1] - hitObjectsTime[0]) *
-                                                       (element.Time - hitObjectsTime[0])) + (100 / _args.Sv[0]))),
+                                Time = hitObject.Time - _args.Offset,
+                                BeatLength = beatLength,
                                 Meter = 4,
                                 SampleSet = 1,
                                 SampleIndex = 0,
-                                Volume = (int)Math.Round(_args.Volume[0] +
-                                                         (commonVolumeRatio * (element.Time - hitObjectsTime[0]))),
+                                Volume = (int)Math.Round(volumeStart + (commonVolumeRatio * (hitObject.Time - startTime))),
                                 Uninherited = 0,
                                 Effects = _args.IsKiaiMode ? 1 : 0
                             };
@@ -252,24 +284,25 @@ namespace osu_taiko_SV_Helper.Classes
 
                 case 2:
                     {
-                        double baseBpm = _args.BaseBpm;
-                        double startBpm = _bpmList.Last(bpm => bpm.Time <= _args.Point[0]).Value;
+                        Bpm bpmAtStart = _bpmList.LastOrDefault(bpm => bpm.Time <= pointStart);
+                        double startBpm = bpmAtStart == null ? 0 : bpmAtStart.Value;
                         double interval = 60000 / startBpm / 16;
-                        double commonSvRatio = (_args.Sv[1] - _args.Sv[0]) / (_args.Point[1] - _args.Point[0]);
-                        double commonVolumeRatio =
-                            (double)(_args.Volume[1] - _args.Volume[0]) / (_args.Point[1] - _args.Point[0]);
+                        double commonSvRatio = (svEnd - svStart) / (pointStart - pointStart);
+                        double commonVolumeRatio = (double)(volumeEnd - volumeStart) / (pointStart - pointStart);
 
-                        for (var i = (double)_args.Point[0]; i <= _args.Point[1]; i += interval)
+                        for (double i = pointStart; i <= pointStart; i += interval)
                         {
-                            if (i > _args.Point[1]) break;
-                            double currentBpm = _bpmList.Last(bpm => bpm.Time <= i).Value;
+                            if (i > pointStart) break;
+
+                            Bpm bpmAtCurrent = _bpmList.LastOrDefault(bpm => bpm.Time <= i);
+                            double currentBpm = bpmAtCurrent == null ? 0 : bpmAtCurrent.Value;
+
                             if (_args.Offset16) _args.Offset = (int)Math.Round(60000 / currentBpm / 16);
                             if (_args.Offset12) _args.Offset = (int)Math.Round(60000 / currentBpm / 12);
 
                             interval = 60000 / currentBpm / 16;
 
-                            if (_timingPoints.Any(timingPoint =>
-                                    timingPoint.Time == (int)Math.Round(i - _args.Offset) && timingPoint.Uninherited == 0))
+                            if (_timingPoints.Any(timingPoint => timingPoint.Time == (int)Math.Round(i - _args.Offset) && timingPoint.Uninherited == 0))
                             {
                                 switch (_args.Mode)
                                 {
@@ -284,7 +317,7 @@ namespace osu_taiko_SV_Helper.Classes
                                         var prevTimingPoint = _timingPoints.Find(timingPoint =>
                                             timingPoint.Time == (int)Math.Round(i - _args.Offset) &&
                                             timingPoint.Uninherited == 0);
-                                        prevTimingPoint.BeatLength /= _args.Sv[0] + (commonSvRatio * (i - _args.Point[0]));
+                                        prevTimingPoint.BeatLength /= svStart + (commonSvRatio * (i - pointStart));
                                         continue;
                                 }
                             }
@@ -292,11 +325,11 @@ namespace osu_taiko_SV_Helper.Classes
                             TimingPoint currentTimingPoint = new TimingPoint
                             {
                                 Time = (int)Math.Round(i - _args.Offset),
-                                BeatLength = -100 / (_args.Sv[0] + (commonSvRatio * (i - _args.Point[0]))),
+                                BeatLength = -100 / (svStart + (commonSvRatio * (i - pointStart))),
                                 Meter = 4,
                                 SampleSet = 1,
                                 SampleIndex = 0,
-                                Volume = (int)Math.Round(_args.Volume[0] + (commonVolumeRatio * (i - _args.Point[0]))),
+                                Volume = (int)Math.Round(volumeStart + (commonVolumeRatio * (i - pointStart))),
                                 Uninherited = 0,
                                 Effects = _args.IsKiaiMode ? 1 : 0
                             };
@@ -322,6 +355,7 @@ namespace osu_taiko_SV_Helper.Classes
                 if (a.Time == b.Time) return a.Uninherited - b.Uninherited;
                 return a.Time.CompareTo(b.Time);
             });
+
             return Task.CompletedTask;
         }
 
@@ -336,8 +370,7 @@ namespace osu_taiko_SV_Helper.Classes
 
             foreach (var timingPoint in _timingPoints)
             {
-                beatmapList.Insert(timingPointsIndex + 1,
-                    $"{timingPoint.Time},{timingPoint.BeatLength},{timingPoint.Meter},{timingPoint.SampleSet},{timingPoint.SampleIndex},{timingPoint.Volume},{timingPoint.Uninherited},{timingPoint.Effects}");
+                beatmapList.Insert(timingPointsIndex + 1, timingPoint.GetString());
             }
 
             for (int i = 0; i < beatmapList.Count; i++)

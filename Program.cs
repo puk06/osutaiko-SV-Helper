@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Windows.Forms;
+using osu_taiko_SV_Helper.Forms;
 
 namespace osu_taiko_SV_Helper
 {
@@ -18,7 +19,7 @@ namespace osu_taiko_SV_Helper
                 CultureInfo.CurrentUICulture = new CultureInfo("en-us");
                 Application.EnableVisualStyles();
                 Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new SvHelper());
+                Application.Run(new Main());
             }
             catch (Exception softwareError)
             {
