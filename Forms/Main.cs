@@ -366,11 +366,11 @@ public partial class Main : Form
         catch (Exception error)
         {
             LogUtils.DebugLogger(error.Message);
-            LogUtils.ShowErrorMessage(error.Message);
             WORK_STATUS_TEXT.Text = "Error Occurred";
 
             WORK_STATUS_TEXT.ForeColor = Color.Red;
             System.Media.SystemSounds.Hand.Play();
+            LogUtils.ShowErrorMessage(error.Message + "\n\n" + error.ToString());
             await Task.Delay(3000);
             _working = false;
         }

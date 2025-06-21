@@ -12,6 +12,6 @@ internal static class LogUtils
 
     internal static void ShowErrorMessage(string message)
     {
-        MessageBox.Show(message, "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        MessageBox.Show("エラー: " + message, "エラー", MessageBoxButtons.OK, MessageBoxIcon.Error);
     }
 }
