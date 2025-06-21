@@ -1,32 +1,29 @@
-﻿using System;
+﻿namespace osu_taiko_SV_Helper.Utils;
 
-namespace osu_taiko_SV_Helper.Utils
+internal static class MathUtils
 {
-    internal static class MathUtils
+
+    internal static int IntParse(string str)
     {
-
-        internal static int IntParse(string str)
+        try
         {
-            try
-            {
-                return Convert.ToInt32(str);
-            } 
-            catch
-            {
-                return 0;
-            }
+            return Convert.ToInt32(str);
         }
-
-        internal static double DoubleParse(string str)
+        catch
         {
-            try
-            {
-                return Convert.ToDouble(str);
-            }
-            catch
-            {
-                return 0;
-            }
+            return 0;
+        }
+    }
+
+    internal static double DoubleParse(string str)
+    {
+        try
+        {
+            return Convert.ToDouble(str);
+        }
+        catch
+        {
+            return 0;
         }
     }
 }
