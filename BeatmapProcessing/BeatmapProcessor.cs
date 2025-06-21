@@ -21,7 +21,7 @@ namespace osu_taiko_SV_Helper.BeatmapProcessing
 
         private const string TimingpointsSection = "[TimingPoints]";
         private const string HitobjectsSection = "[HitObjects]";
-        private readonly string[] NewLine = { Environment.NewLine };
+        private readonly static string[] NewLine = { Environment.NewLine };
 
         public Task BeatmapParser(string beatmapPath, BeatmapArgs args)
         {
