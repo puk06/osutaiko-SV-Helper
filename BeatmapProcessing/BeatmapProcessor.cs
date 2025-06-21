@@ -15,6 +15,7 @@ internal class BeatmapProcessor
     private List<Bpm> _bpmList = new List<Bpm>();
 
     private const string TimingpointsSection = "[TimingPoints]";
+    private const string ColoursSection = "[Colours]";
     private const string HitobjectsSection = "[HitObjects]";
     private readonly static string NewLine = Environment.NewLine;
 
@@ -60,15 +61,21 @@ internal class BeatmapProcessor
             .ToArray();
 
         int timingPointsIndex = Array.IndexOf(_beatmap, TimingpointsSection);
+        int coloursIndex = Array.IndexOf(_beatmap, ColoursSection);
         int hitObjectsIndex = Array.IndexOf(_beatmap, HitobjectsSection);
 
         _timingPoints = _beatmap
             .Skip(timingPointsIndex + 1)
-            .Take(hitObjectsIndex - timingPointsIndex - 1)
+            .Take(coloursIndex == -1 ? hitObjectsIndex - timingPointsIndex - 1 : coloursIndex - timingPointsIndex - 1)
             .Where(line => !string.IsNullOrWhiteSpace(line))
             .Select(line =>
             {
                 string[] objects = line.Split(',');
+                if (objects.Length != 8)
+                {
+                    throw new Exception("Invalid Timingpoint Format: " + line);
+                }
+
                 return new TimingPoint
                 {
                     Time = MathUtils.DoubleParse(objects[0]),
@@ -369,10 +376,10 @@ internal class BeatmapProcessor
         var beatmapList = new List<string>(_beatmap);
 
         int timingPointsIndex = Array.IndexOf(_beatmap, TimingpointsSection);
+        int coloursIndex = Array.IndexOf(_beatmap, ColoursSection);
         int hitObjectsIndex = Array.IndexOf(_beatmap, HitobjectsSection);
 
-        beatmapList.RemoveRange(timingPointsIndex + 1, hitObjectsIndex - timingPointsIndex - 1);
-
+        beatmapList.RemoveRange(timingPointsIndex + 1, coloursIndex == -1 ? hitObjectsIndex - timingPointsIndex - 1 : coloursIndex - timingPointsIndex - 1);
         foreach (var timingPoint in _timingPoints)
         {
             beatmapList.Insert(timingPointsIndex + 1, timingPoint.GetString());
