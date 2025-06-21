@@ -112,7 +112,8 @@ public partial class Main : Form
                 {
                     foreach (Control control in Controls)
                     {
-                        if (control == WORK_STATUS_TEXT ||
+                        if (
+                            control == WORK_STATUS_TEXT ||
                             control == WORK_STATUS_LABEL ||
                             control == Background_Picture_Box ||
                             control == TITLE_LABEL ||
@@ -151,26 +152,9 @@ public partial class Main : Form
                     WORK_STATUS_TEXT.ForeColor = Color.LimeGreen;
                 }
 
-                void SetLabelText(Control label, string text)
-                {
-                    const int maxLabelWidth = 380;
-                    label.MaximumSize = new Size(maxLabelWidth, int.MaxValue);
-
-                    if (TextRenderer.MeasureText(text, label.Font).Width > maxLabelWidth)
-                    {
-                        while (TextRenderer.MeasureText(text + "...", label.Font).Width > maxLabelWidth)
-                        {
-                            text = text.Substring(0, text.Length - 1);
-                        }
-                        text += "...";
-                    }
-
-                    label.Text = text;
-                }
-
-                SetLabelText(TITLE_LABEL, _memoryData.Title);
-                SetLabelText(ARTIST_LABEL, _memoryData.Artist);
-                SetLabelText(VERSION_LABEL, _memoryData.Version);
+                FormUtils.SetLabelText(TITLE_LABEL, _memoryData.Title);
+                FormUtils.SetLabelText(ARTIST_LABEL, _memoryData.Artist);
+                FormUtils.SetLabelText(VERSION_LABEL, _memoryData.Version);
                 VERSION_LABEL.Location = new Point(390 - VERSION_LABEL.Width, 2);
 
                 if (_preBackgroundPath == _memoryData.BackgroundPath) continue;
@@ -219,7 +203,7 @@ public partial class Main : Form
                     Process osuProcess = osuProcesses[0];
                     string? fileName = osuProcess.MainModule?.FileName;
                     string? tempOsuDirectory = Path.GetDirectoryName(fileName);
-                    if (tempOsuDirectory != null) 
+                    if (tempOsuDirectory != null)
                     {
                         LogUtils.DebugLogger($"osu! directory: {tempOsuDirectory}");
                         if (string.IsNullOrEmpty(tempOsuDirectory) || !Directory.Exists(tempOsuDirectory))
@@ -233,7 +217,7 @@ public partial class Main : Form
 
                         _songsPath = FileUtils.GetSongsFolderLocation(_osuDirectory);
                         _isDirectoryLoaded = true;
-                    } 
+                    }
                     else
                     {
                         throw new Exception("Couldn't find Osu File.");
@@ -435,7 +419,7 @@ public partial class Main : Form
         if (string.IsNullOrEmpty(SV_STARTTIME_TEXTBOX.Text) || string.IsNullOrEmpty(SV_ENDTIME_TEXTBOX.Text))
         {
             ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始時間と終了時間を入力してください。");
-        } 
+        }
         else
         {
             if (!int.TryParse(SV_STARTTIME_TEXTBOX.Text, out _) || !int.TryParse(SV_ENDTIME_TEXTBOX.Text, out _))
@@ -462,7 +446,7 @@ public partial class Main : Form
         if (string.IsNullOrEmpty(SV_START_TEXTBOX.Text) || string.IsNullOrEmpty(SV_END_TEXTBOX.Text))
         {
             ArrayUtils.AddValueToArray(ref reasons, "❌️ 開始SVと終了SVを入力してください。");
-        } 
+        }
         else
         {
             if (!double.TryParse(SV_START_TEXTBOX.Text, out _) || !double.TryParse(SV_END_TEXTBOX.Text, out _))
@@ -526,7 +510,7 @@ public partial class Main : Form
     private void SET_START_TIME_BUTTON_Click(object sender, EventArgs e)
         => SV_STARTTIME_TEXTBOX.Text = _currentTime.ToString();
 
-    private void SET_END_TIME_BUTTON_Click(object sender, EventArgs e) 
+    private void SET_END_TIME_BUTTON_Click(object sender, EventArgs e)
         => SV_ENDTIME_TEXTBOX.Text = _currentTime.ToString();
 
     private void RESET_BUTTON_Click(object sender, EventArgs e)
@@ -554,27 +538,32 @@ public partial class Main : Form
             try
             {
                 _working = true;
+
+                WORK_STATUS_TEXT.Text = "Restoring...";
                 Stopwatch sw = new Stopwatch();
                 sw.Start();
-                WORK_STATUS_TEXT.Text = "Restoring...";
+
                 string[] files = Directory.GetFiles(backupPath);
                 string latestBackup = FileUtils.FindLatestFile(files);
+
                 if (string.IsNullOrEmpty(latestBackup))
                 {
                     sw.Stop();
                     WORK_STATUS_TEXT.Text = $"Backup not found! ({sw.ElapsedMilliseconds}ms)";
                     WORK_STATUS_TEXT.ForeColor = Color.Red;
-                    System.Media.SystemSounds.Hand.Play();
+                    FormUtils.PlaySound(SystemSounds.Error);
                 }
                 else
                 {
                     File.Copy(latestBackup, _currentBeatmapPath, true);
                     File.Delete(latestBackup);
                     if (Directory.GetFiles(backupPath).Length == 0) Directory.Delete(backupPath);
+
                     sw.Stop();
                     WORK_STATUS_TEXT.Text = $"Restored! ({sw.ElapsedMilliseconds}ms)";
-                    System.Media.SystemSounds.Asterisk.Play();
+                    FormUtils.PlaySound(SystemSounds.Success);
                 }
+
                 await Task.Delay(3000);
                 _working = false;
             }
@@ -583,7 +572,7 @@ public partial class Main : Form
                 LogUtils.DebugLogger(error.Message);
                 WORK_STATUS_TEXT.Text = "Error Occurred";
                 WORK_STATUS_TEXT.ForeColor = Color.Red;
-                System.Media.SystemSounds.Hand.Play();
+                FormUtils.PlaySound(SystemSounds.Error);
                 await Task.Delay(3000);
                 _working = false;
             }
@@ -598,7 +587,7 @@ public partial class Main : Form
             _working = true;
             WORK_STATUS_TEXT.Text = "Backup not found!";
             WORK_STATUS_TEXT.ForeColor = Color.Red;
-            System.Media.SystemSounds.Hand.Play();
+            FormUtils.PlaySound(SystemSounds.Error);
             await Task.Delay(3000);
             _working = false;
         }

@@ -16,7 +16,7 @@ internal class BeatmapProcessor
 
     private const string TimingpointsSection = "[TimingPoints]";
     private const string HitobjectsSection = "[HitObjects]";
-    private readonly static string[] NewLine = { Environment.NewLine };
+    private readonly static string NewLine = Environment.NewLine;
 
     public Task BeatmapParser(string beatmapPath, BeatmapArgs args)
     {
@@ -342,8 +342,7 @@ internal class BeatmapProcessor
 
                         if (_args.BpmCompatibility && (int)Math.Round(startBpm) != (int)Math.Round(currentBpm))
                         {
-                            currentTimingPoint.BeatLength *=
-                                baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
+                            currentTimingPoint.BeatLength *= baseBpm == 0 ? startBpm / currentBpm : baseBpm / currentBpm;
                         }
 
                         _timingPoints.Add(currentTimingPoint);
